@@ -8,7 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
-import { reviews, reviewFunnel } from "@/lib/mock/data";
+import { reviews } from "@/lib/mock/data";
+
+const reviewFunnel: { label: string; value: number }[] = [
+  { label: "Requests sent", value: 186 },
+  { label: "Opened", value: 141 },
+  { label: "Clicked through", value: 78 },
+  { label: "Reviews left", value: 52 },
+];
 import { shortDate } from "@/lib/format";
 
 export const Route = createFileRoute("/reviews")({
@@ -90,7 +97,7 @@ function ReviewsPage() {
               recovery.map((r) => (
                 <div key={r.id} className="rounded-lg border border-border p-3 text-sm">
                   <p className="font-medium">
-                    {r.authorName} · {r.rating}★
+                    {r.clientName} · {r.rating}★
                   </p>
                   <p className="text-xs text-muted-foreground">{r.body}</p>
                   <Button
@@ -111,9 +118,9 @@ function ReviewsPage() {
       <Tabs value={source} onValueChange={setSource}>
         <TabsList>
           <TabsTrigger value="all">All sources</TabsTrigger>
-          <TabsTrigger value="google">Google</TabsTrigger>
-          <TabsTrigger value="yelp">Yelp</TabsTrigger>
-          <TabsTrigger value="facebook">Facebook</TabsTrigger>
+          <TabsTrigger value="Google">Google</TabsTrigger>
+          <TabsTrigger value="Yelp">Yelp</TabsTrigger>
+          <TabsTrigger value="Facebook">Facebook</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -131,7 +138,7 @@ function ReviewsPage() {
                       />
                     ))}
                   </span>
-                  <p className="text-sm font-medium">{r.authorName}</p>
+                  <p className="text-sm font-medium">{r.clientName}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusChip>{r.source}</StatusChip>
@@ -146,7 +153,7 @@ function ReviewsPage() {
                 <div className="space-y-2">
                   <SectionTitle>Draft response</SectionTitle>
                   <Textarea
-                    aria-label={`Response to ${r.authorName}`}
+                    aria-label={`Response to ${r.clientName}`}
                     rows={2}
                     value={reply[r.id] ?? ""}
                     onChange={(e) => setReply((p) => ({ ...p, [r.id]: e.target.value }))}

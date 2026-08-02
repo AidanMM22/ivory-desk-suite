@@ -12,7 +12,9 @@ import {
 import { PageHeader, SectionTitle } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
 import { appointments, therapists } from "@/lib/mock/data";
-import { clockTime, dateTime, initialsOf, percent } from "@/lib/format";
+import { clockTime, dateTime, initialsOf } from "@/lib/format";
+
+const percent = (n: number) => `${Math.round(n * (n <= 1 ? 100 : 1))}%`;
 import type { Therapist } from "@/lib/mock/types";
 
 export const Route = createFileRoute("/therapists")({
@@ -67,7 +69,7 @@ function TherapistsPage() {
                 <Stat label="Rating" value={t.reviewRating.toFixed(1)} />
               </div>
               <p className="text-xs text-muted-foreground">
-                {t.weeklyAppointments} appointments this week · {t.availabilityNote}
+                {t.weeklyAppointments} appointments this week · {t.availability}
               </p>
               <Button variant="outline" className="w-full" onClick={() => setDetail(t)}>
                 View profile
@@ -84,7 +86,7 @@ function TherapistsPage() {
               <SheetHeader>
                 <SheetTitle className="font-display text-2xl">{detail.name}</SheetTitle>
                 <SheetDescription>
-                  {detail.title} · {detail.availabilityNote}
+                  {detail.title} · {detail.availability}
                 </SheetDescription>
               </SheetHeader>
               <div className="space-y-4 px-4 pb-10">
@@ -108,16 +110,6 @@ function TherapistsPage() {
                         </li>
                       ))}
                   </ul>
-                </div>
-                <div>
-                  <SectionTitle>Weekly availability</SectionTitle>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {detail.workDays.map((d) => (
-                      <StatusChip key={d} tone="positive">
-                        {d}
-                      </StatusChip>
-                    ))}
-                  </div>
                 </div>
               </div>
             </>

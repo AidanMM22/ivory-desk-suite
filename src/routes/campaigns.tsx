@@ -64,7 +64,7 @@ function CampaignsPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {c.channel.toUpperCase()} · {c.segment} · {c.audienceSize} recipients ·{" "}
-                {c.sendAt ? dateTime(c.sendAt) : "no send date"}
+                {c.sentAt ? dateTime(c.sentAt) : c.scheduledFor ? dateTime(c.scheduledFor) : "no send date"}
               </p>
             </CardHeader>
             <CardContent className="space-y-3">

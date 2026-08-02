@@ -22,10 +22,13 @@ import {
   conversionFunnel,
   retentionCohorts,
   revenueTrend,
-  serviceMix,
+  services,
   therapists,
 } from "@/lib/mock/data";
-import { currency, percent } from "@/lib/format";
+import { currency } from "@/lib/format";
+
+const percent = (n: number) => `${Math.round(n <= 1 ? n * 100 : n)}%`;
+const serviceMix = services.map((s, i) => ({ name: s.name, value: [42, 31, 15, 12][i] ?? 8 }));
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -93,7 +96,7 @@ function ReportsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={serviceMix} dataKey="value" nameKey="name" outerRadius={90} label>
-                  {serviceMix.map((_, i) => (
+                  {serviceMix.map((_entry: { name: string; value: number }, i: number) => (
                     <Cell key={i} fill={PIE[i % PIE.length]} />
                   ))}
                 </Pie>
@@ -109,9 +112,9 @@ function ReportsPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {conversionFunnel.map((f) => (
-              <div key={f.label} className="space-y-1">
+              <div key={f.stage} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span>{f.label}</span>
+                  <span>{f.stage}</span>
                   <span className="font-display">{f.value}</span>
                 </div>
                 <span className="block h-2 rounded-full bg-secondary">
@@ -157,7 +160,7 @@ function ReportsPage() {
                 <span className="flex gap-1.5">
                   <StatusChip>M1 {percent(c.m1)}</StatusChip>
                   <StatusChip>M3 {percent(c.m3)}</StatusChip>
-                  <StatusChip>M6 {percent(c.m6)}</StatusChip>
+                  <StatusChip>M2 {percent(c.m2)}</StatusChip>
                 </span>
               </div>
             ))}
