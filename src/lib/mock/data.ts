@@ -115,8 +115,8 @@ export const services: Service[] = [
   },
 ];
 
-export const serviceByKey = (key: ServiceKey) =>
-  services.find((s) => s.key === key) ?? services[0];
+export const serviceByKey = (key: ServiceKey): Service =>
+  services.find((s) => s.key === key) ?? (services[0] as Service);
 
 export const team: TeamMember[] = [
   { id: "u-1", name: "Marisol Vega", role: "owner", email: "marisol@mandmspa.com", initials: "MV" },

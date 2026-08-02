@@ -15,7 +15,7 @@ export interface Consent {
   sms: "granted" | "denied" | "pending";
   email: "granted" | "denied" | "pending";
   marketing: boolean;
-  unsubscribedAt?: string;
+  unsubscribedAt?: string | undefined;
   updatedAt: string;
 }
 
@@ -58,7 +58,7 @@ export interface Lead {
   serviceInterest: ServiceKey;
   ownerId: ID;
   lastContactAt: string;
-  nextFollowUpAt?: string;
+  nextFollowUpAt?: string | undefined;
   value: number;
   consent: Consent;
   locationId: ID;
@@ -73,14 +73,14 @@ export interface Client {
   email: string;
   lifetimeValue: number;
   visitCount: number;
-  lastVisitAt?: string;
-  nextVisitAt?: string;
-  preferredTherapistId?: ID;
+  lastVisitAt?: string | undefined;
+  nextVisitAt?: string | undefined;
+  preferredTherapistId?: ID | undefined;
   preferredService: ServiceKey;
   tags: string[];
   rebooked: boolean;
   consent: Consent;
-  birthday?: string;
+  birthday?: string | undefined;
   intakeComplete: boolean;
   restrictedNote: string;
   internalNote: string;
@@ -100,8 +100,8 @@ export type AppointmentStatus =
 
 export interface Appointment {
   id: ID;
-  clientId?: ID;
-  leadId?: ID;
+  clientId?: ID | undefined;
+  leadId?: ID | undefined;
   clientName: string;
   serviceKey: ServiceKey;
   duration: number;
@@ -156,7 +156,7 @@ export interface Conversation {
   lastMessageAt: string;
   preview: string;
   unread: boolean;
-  assignedToId?: ID;
+  assignedToId?: ID | undefined;
   status: "open" | "snoozed" | "closed";
   consent: Consent;
   messages: Message[];
@@ -167,7 +167,9 @@ export interface Task {
   title: string;
   dueAt: string;
   ownerId: ID;
-  relatedTo?: { type: "lead" | "client" | "appointment"; id: ID; label: string };
+  relatedTo?:
+    | { type: "lead" | "client" | "appointment"; id: ID; label: string }
+    | undefined;
   priority: "low" | "normal" | "high";
   done: boolean;
 }
@@ -203,8 +205,8 @@ export interface Campaign {
   status: "draft" | "scheduled" | "sent";
   segment: string;
   audienceSize: number;
-  scheduledFor?: string;
-  sentAt?: string;
+  scheduledFor?: string | undefined;
+  sentAt?: string | undefined;
   preview: string;
   metrics: { delivered: number; opened: number; clicked: number; booked: number; revenue: number };
 }
@@ -217,7 +219,7 @@ export interface Review {
   body: string;
   createdAt: string;
   responded: boolean;
-  therapistId?: ID;
+  therapistId?: ID | undefined;
   recoveryNeeded: boolean;
 }
 
@@ -228,7 +230,7 @@ export interface ActivityEvent {
   title: string;
   detail: string;
   actor: string;
-  subjectId?: ID;
+  subjectId?: ID | undefined;
 }
 
 export interface Location {
