@@ -66,10 +66,10 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             to={item.to}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
               active
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
             )}
           >
             <item.icon className="h-4 w-4 shrink-0" aria-hidden />
@@ -84,11 +84,13 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <div className="flex min-w-0 items-center gap-3 px-3 py-4">
-      <div className="bg-calm grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border">
-        <span className="font-display text-sm">M&amp;M</span>
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-foreground text-background shadow-sm">
+        <span className="text-xs font-bold tracking-tight">M&amp;M</span>
       </div>
       <div className="min-w-0">
-        <p className="font-display truncate text-sm leading-tight">M&amp;M Spa CRM</p>
+        <p className="truncate text-sm font-semibold leading-tight tracking-tight">
+          M&amp;M Spa CRM
+        </p>
         <p className="truncate text-xs text-muted-foreground">{BUSINESS.city}</p>
       </div>
     </div>
@@ -108,7 +110,7 @@ function NotificationCenter() {
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 ? (
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-gold" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-info ring-2 ring-background" />
           ) : null}
         </Button>
       </PopoverTrigger>
@@ -155,7 +157,11 @@ function TaskPanel() {
               key={t.id}
               className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-accent/40"
             >
-              <Checkbox checked={t.done} onCheckedChange={() => toggleTask(t.id)} className="mt-0.5" />
+              <Checkbox
+                checked={t.done}
+                onCheckedChange={() => toggleTask(t.id)}
+                className="mt-0.5"
+              />
               <span className="min-w-0">
                 <span
                   className={cn(
@@ -265,7 +271,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-border bg-background/92 backdrop-blur-xl">
           <div className="flex items-center gap-2 px-3 py-3 sm:px-6">
             <Sheet open={mobileNav} onOpenChange={setMobileNav}>
               <SheetTrigger asChild>
@@ -290,7 +296,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:border-ring/50 sm:max-w-md"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-muted-foreground shadow-sm transition-all hover:border-foreground/20 hover:shadow sm:max-w-md"
             >
               <Search className="h-4 w-4 shrink-0" />
               <span className="truncate">Search clients, leads, appointments…</span>
