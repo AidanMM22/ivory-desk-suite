@@ -270,9 +270,11 @@ create policy "crm_records_update_staff"
 on public.crm_records for update
 to authenticated
 using (
-  select private.has_workspace_role(
-    workspace_id,
-    array['owner', 'front_desk']::text[]
+  (
+    select private.has_workspace_role(
+      workspace_id,
+      array['owner', 'front_desk']::text[]
+    )
   )
 )
 with check (
