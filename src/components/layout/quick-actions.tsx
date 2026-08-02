@@ -20,9 +20,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWorkspace } from "@/lib/workspace";
-import { clients, leads, services, therapists, TODAY, locations } from "@/lib/mock/data";
+import { clients, leads, services, team, therapists, TODAY, locations } from "@/lib/data";
 import { useCrmData } from "@/lib/crm-data";
-import type { Lead, LeadSource, ServiceKey } from "@/lib/mock/types";
+import { useAuth } from "@/lib/auth";
+import type { Lead, LeadSource, ServiceKey } from "@/lib/types";
 
 interface LeadDraft {
   name: string;
@@ -38,15 +39,16 @@ const emptyLead: LeadDraft = {
   name: "",
   phone: "",
   email: "",
-  serviceInterest: "swedish",
+  serviceInterest: "unspecified",
   source: "Website booking",
-  ownerId: "u-2",
+  ownerId: "unassigned",
   notes: "",
 };
 
 export function QuickActionDialogs() {
   const { quickAction, setQuickAction, addTask } = useWorkspace();
   const { persistRecord } = useCrmData();
+  const { user } = useAuth();
   const [leadDraft, setLeadDraft] = useState<LeadDraft>(emptyLead);
   const close = () => setQuickAction(null);
 
@@ -87,7 +89,8 @@ export function QuickActionDialogs() {
                     marketing: false,
                     updatedAt: now,
                   },
-                  locationId: locations[0]?.id ?? "loc-1",
+                  ownerId: user?.id ?? "unassigned",
+                  locationId: locations[0]?.id ?? "",
                   createdAt: now,
                 };
                 void persistRecord("leads", lead, lead.locationId)
@@ -113,7 +116,9 @@ export function QuickActionDialogs() {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Book appointment</DialogTitle>
-            <DialogDescription>Tacoma, WA · questions? {locations[0]!.phone}</DialogDescription>
+            <DialogDescription>
+              Create an appointment from your configured CRM records.
+            </DialogDescription>
           </DialogHeader>
           <BookingForm />
           <DialogFooter>
@@ -121,10 +126,14 @@ export function QuickActionDialogs() {
               Cancel
             </Button>
             <Button
+              disabled={
+                services.length === 0 ||
+                therapists.length === 0 ||
+                locations.every((location) => location.rooms.length === 0) ||
+                clients.length + leads.length === 0
+              }
               onClick={() => {
-                toast.success("Appointment booked", {
-                  description: "Confirmation + reminders scheduled (mock).",
-                });
+                toast.info("Appointment creation is not connected to the database form yet.");
                 close();
               }}
             >
@@ -139,7 +148,7 @@ export function QuickActionDialogs() {
           <DialogHeader>
             <DialogTitle className="font-display">Send message</DialogTitle>
             <DialogDescription>
-              Messaging is not connected yet — sends are simulated.
+              Connect a messaging provider before sending SMS or email.
             </DialogDescription>
           </DialogHeader>
           <MessageForm />
@@ -148,8 +157,8 @@ export function QuickActionDialogs() {
               Cancel
             </Button>
             <Button
+              disabled
               onClick={() => {
-                toast.success("Message queued (mock)");
                 close();
               }}
             >
@@ -225,6 +234,7 @@ export function LeadForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="unspecified">Not specified</SelectItem>
             {services.map((s) => (
               <SelectItem key={s.key} value={s.key}>
                 {s.name}
@@ -264,8 +274,12 @@ export function LeadForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="u-1">Marisol Vega</SelectItem>
-            <SelectItem value="u-2">Dana Whitfield</SelectItem>
+            <SelectItem value="unassigned">Current user</SelectItem>
+            {team.map((member) => (
+              <SelectItem key={member.id} value={member.id}>
+                {member.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </Field>
@@ -285,12 +299,26 @@ export function LeadForm({
 }
 
 export function BookingForm() {
-  const [service, setService] = useState("swedish");
-  const selected = services.find((s) => s.key === service) ?? services[0]!;
+  const availableServices = services.filter((item) => item.active);
+  const [service, setService] = useState(availableServices[0]?.key ?? "");
+  const selected = availableServices.find((item) => item.key === service);
+  const rooms = locations.flatMap((location) => location.rooms);
+  if (
+    !selected ||
+    therapists.length === 0 ||
+    rooms.length === 0 ||
+    clients.length + leads.length === 0
+  ) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+        Add a client or lead, an active service, a therapist, and a treatment room before booking.
+      </div>
+    );
+  }
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Client or lead">
-        <Select defaultValue={clients[0]!.id}>
+        <Select defaultValue={clients[0]?.id ?? leads[0]!.id}>
           <SelectTrigger id="client-or-lead">
             <SelectValue />
           </SelectTrigger>
@@ -314,13 +342,11 @@ export function BookingForm() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {services
-              .filter((s) => s.active)
-              .map((s) => (
-                <SelectItem key={s.key} value={s.key}>
-                  {s.name}
-                </SelectItem>
-              ))}
+            {availableServices.map((s) => (
+              <SelectItem key={s.key} value={s.key}>
+                {s.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </Field>
@@ -353,12 +379,12 @@ export function BookingForm() {
         </Select>
       </Field>
       <Field label="Room">
-        <Select defaultValue="room-1">
+        <Select defaultValue={rooms[0]!.id}>
           <SelectTrigger id="room">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {locations[0]!.rooms.map((r) => (
+            {rooms.map((r) => (
               <SelectItem key={r.id} value={r.id}>
                 {r.name} · {r.type}
               </SelectItem>
@@ -405,10 +431,17 @@ export function BookingForm() {
 }
 
 export function MessageForm() {
+  if (leads.length + clients.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+        Add a lead or client before composing a message.
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
       <Field label="Recipient">
-        <Select defaultValue={leads[0]!.id}>
+        <Select defaultValue={leads[0]?.id ?? clients[0]!.id}>
           <SelectTrigger id="recipient">
             <SelectValue />
           </SelectTrigger>

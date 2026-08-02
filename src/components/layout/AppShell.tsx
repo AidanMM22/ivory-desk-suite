@@ -34,7 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { BUSINESS } from "@/lib/mock/data";
+import { BUSINESS } from "@/lib/data";
 import { dateTime, roleLabel } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";

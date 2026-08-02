@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/sheet";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
-import { automations as seed } from "@/lib/mock/data";
+import { automations as seed } from "@/lib/data";
 import { dateTime } from "@/lib/format";
-import type { Automation } from "@/lib/mock/types";
+import type { Automation } from "@/lib/types";
 import { useCrmData } from "@/lib/crm-data";
 
 export const Route = createFileRoute("/automations")({
@@ -228,7 +228,7 @@ function AutomationsPage() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => toast("Step added (mock)")}
+                onClick={() => toast.info("Automation step editing is not connected yet.")}
               >
                 <Workflow className="mr-2 h-4 w-4" /> Add step
               </Button>

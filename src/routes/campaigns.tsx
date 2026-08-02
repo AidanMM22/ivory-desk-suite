@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
-import { campaigns } from "@/lib/mock/data";
+import { campaigns } from "@/lib/data";
 import { dateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/campaigns")({
@@ -45,7 +45,7 @@ function CampaignsPage() {
     <div className="mx-auto max-w-[1300px] space-y-6">
       <PageHeader
         title="Campaigns"
-        description="Broadcast SMS and email to consented audiences — sending is simulated"
+        description="Broadcast SMS and email after connecting a delivery provider"
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> Create campaign
@@ -85,7 +85,11 @@ function CampaignsPage() {
                 <Metric label="Booked" value={c.metrics.booked} />
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => toast("Preview opened (mock)")}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => toast.info("Campaign preview is not connected yet.")}
+                >
                   Preview
                 </Button>
                 <Button size="sm" onClick={() => toast.success("Campaign duplicated")}>

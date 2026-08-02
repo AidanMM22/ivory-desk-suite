@@ -28,8 +28,7 @@ import {
   tasks,
   team,
   therapists,
-} from "@/lib/mock/data";
-import type { Role } from "@/lib/mock/types";
+} from "@/lib/data";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
 export type CrmEntityType =
@@ -94,14 +93,12 @@ const listTargets: Record<Exclude<CrmEntityType, "business">, JsonRecord[]> = {
   therapists: therapists as unknown as JsonRecord[],
 };
 
-const seedSnapshot = {
-  business: { ...BUSINESS } as JsonRecord,
-  lists: Object.fromEntries(
-    Object.entries(listTargets).map(([key, rows]) => [
-      key,
-      rows.map((row) => structuredClone(row)),
-    ]),
-  ) as Record<Exclude<CrmEntityType, "business">, JsonRecord[]>,
+const emptyBusiness = {
+  name: "",
+  workspace: "",
+  phone: "",
+  city: "",
+  website: "",
 };
 
 function recordId(entityType: CrmEntityType, entity: JsonRecord, index: number) {
@@ -114,35 +111,6 @@ function locationIdOf(entity: JsonRecord) {
   return typeof locationId === "string" ? locationId : null;
 }
 
-function seedRows(workspaceId: string, userId: string): DatabaseRecord[] {
-  const rows: DatabaseRecord[] = [
-    {
-      workspace_id: workspaceId,
-      entity_type: "business",
-      entity_id: "default",
-      location_id: null,
-      payload: seedSnapshot.business,
-    },
-  ];
-
-  for (const [entityType, entities] of Object.entries(seedSnapshot.lists) as [
-    Exclude<CrmEntityType, "business">,
-    JsonRecord[],
-  ][]) {
-    entities.forEach((entity, index) => {
-      rows.push({
-        workspace_id: workspaceId,
-        entity_type: entityType,
-        entity_id: recordId(entityType, entity, index),
-        location_id: locationIdOf(entity),
-        payload: entity,
-      });
-    });
-  }
-
-  return rows.map((row) => ({ ...row, updated_by: userId })) as DatabaseRecord[];
-}
-
 function hydrate(records: DatabaseRecord[]) {
   const grouped = new Map<CrmEntityType, JsonRecord[]>();
   for (const record of records) {
@@ -152,14 +120,14 @@ function hydrate(records: DatabaseRecord[]) {
   }
 
   const business = grouped.get("business")?.[0];
-  if (business) Object.assign(BUSINESS, business);
+  Object.assign(BUSINESS, emptyBusiness, business ?? {});
 
   for (const [entityType, target] of Object.entries(listTargets) as [
     Exclude<CrmEntityType, "business">,
     JsonRecord[],
   ][]) {
-    const databaseRows = grouped.get(entityType);
-    if (databaseRows) target.splice(0, target.length, ...databaseRows);
+    const databaseRows = grouped.get(entityType) ?? [];
+    target.splice(0, target.length, ...databaseRows);
   }
 }
 
@@ -178,12 +146,10 @@ function upsertHydratedRecord(entityType: CrmEntityType, entity: JsonRecord, ent
 export function CrmDataProvider({
   workspaceId,
   userId,
-  role,
   children,
 }: {
   workspaceId: string;
   userId: string;
-  role: Role;
   children: ReactNode;
 }) {
   const [loading, setLoading] = useState(true);
@@ -204,31 +170,9 @@ export function CrmDataProvider({
 
     if (queryError) throw queryError;
 
-    let records = (data ?? []) as DatabaseRecord[];
-    if (records.length === 0 && (role === "owner" || role === "front_desk")) {
-      const seed = seedRows(workspaceId, userId);
-      for (let index = 0; index < seed.length; index += 100) {
-        const { error: seedError } = await supabase
-          .from("crm_records")
-          .upsert(seed.slice(index, index + 100), {
-            onConflict: "workspace_id,entity_type,entity_id",
-          });
-        if (seedError) throw seedError;
-      }
-
-      const { data: seededData, error: seededQueryError } = await supabase
-        .from("crm_records")
-        .select("workspace_id, entity_type, entity_id, location_id, payload")
-        .eq("workspace_id", workspaceId)
-        .order("entity_type")
-        .order("entity_id");
-      if (seededQueryError) throw seededQueryError;
-      records = (seededData ?? []) as DatabaseRecord[];
-    }
-
-    hydrate(records);
+    hydrate((data ?? []) as DatabaseRecord[]);
     setRevision((value) => value + 1);
-  }, [role, supabase, userId, workspaceId]);
+  }, [supabase, workspaceId]);
 
   useEffect(() => {
     let active = true;

@@ -1,9 +1,4 @@
-import type {
-  AppointmentStatus,
-  AutomationStatus,
-  LeadStage,
-  Role,
-} from "./mock/types";
+import type { AppointmentStatus, AutomationStatus, LeadStage, Role } from "./types";
 
 export const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });

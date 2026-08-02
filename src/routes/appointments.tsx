@@ -32,13 +32,16 @@ import { StatusChip } from "@/components/shared/chips";
 import { BookingForm } from "@/components/layout/quick-actions";
 import {
   appointments as seedAppointments,
+  clients,
   day,
+  leads,
   locations,
   serviceByKey,
+  services,
   therapistById,
   therapists,
   TODAY,
-} from "@/lib/mock/data";
+} from "@/lib/data";
 import {
   addMinutesLabel,
   appointmentStatusLabel,
@@ -49,7 +52,7 @@ import {
   minutesFromMidnight,
   shortDate,
 } from "@/lib/format";
-import type { Appointment } from "@/lib/mock/types";
+import type { Appointment } from "@/lib/types";
 import { useCrmData } from "@/lib/crm-data";
 
 export const Route = createFileRoute("/appointments")({
@@ -81,6 +84,11 @@ function AppointmentsPage() {
   const [booking, setBooking] = useState(false);
   const [detail, setDetail] = useState<Appointment | null>(null);
   const [rows, setRows] = useState<Appointment[]>(seedAppointments);
+  const canBook =
+    clients.length + leads.length > 0 &&
+    services.some((service) => service.active) &&
+    therapists.length > 0 &&
+    rooms.length > 0;
 
   const filtered = useMemo(
     () =>
@@ -393,17 +401,16 @@ function AppointmentsPage() {
           <SheetHeader>
             <SheetTitle className="font-display text-2xl">New appointment</SheetTitle>
             <SheetDescription>
-              M&amp;M Massage Spa · Tacoma, WA · {locations[0]!.phone}
+              Create an appointment from your configured CRM records.
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-4 px-4 pb-10">
             <BookingForm />
             <Button
               className="w-full"
+              disabled={!canBook}
               onClick={() => {
-                toast.success("Appointment booked", {
-                  description: "Confirmation and reminders scheduled (mock).",
-                });
+                toast.info("Appointment creation is not connected to the database form yet.");
                 setBooking(false);
               }}
             >
@@ -450,7 +457,7 @@ function AppointmentsPage() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => toast.success("Reschedule flow opened (mock)")}
+                    onClick={() => toast.info("Choose a new date and time in the booking form.")}
                   >
                     Reschedule
                   </Button>

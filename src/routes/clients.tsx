@@ -37,7 +37,7 @@ import {
   conversations,
   serviceByKey,
   therapistById,
-} from "@/lib/mock/data";
+} from "@/lib/data";
 import {
   appointmentStatusLabel,
   appointmentTone,
@@ -46,7 +46,7 @@ import {
   initialsOf,
 } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
-import type { Client } from "@/lib/mock/types";
+import type { Client } from "@/lib/types";
 
 export const Route = createFileRoute("/clients")({
   head: () => ({
@@ -94,14 +94,17 @@ function ClientsPage() {
         return b.lifetimeValue - a.lifetimeValue;
       });
   }, [query, tag, sort]);
+  const averageLifetimeValue = seedClients.length
+    ? Math.round(
+        seedClients.reduce((sum, client) => sum + client.lifetimeValue, 0) / seedClients.length,
+      )
+    : 0;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
       <PageHeader
         title="Clients"
-        description={`${seedClients.length} clients · average lifetime value ${currency(
-          Math.round(seedClients.reduce((s, c) => s + c.lifetimeValue, 0) / seedClients.length),
-        )}`}
+        description={`${seedClients.length} clients · average lifetime value ${currency(averageLifetimeValue)}`}
         actions={
           <Button onClick={() => setQuickAction("appointment")}>
             <CalendarPlus className="mr-2 h-4 w-4" /> Book appointment
@@ -416,8 +419,7 @@ function ClientProfile({ client, onClose }: { client: Client | null; onClose: ()
                   </div>
                   {can("clients.allNotes") ? (
                     <RestrictedNotice>
-                      Treatment / intake note (restricted, non-medical mock):{" "}
-                      {client.restrictedNote}
+                      Treatment / intake note (restricted): {client.restrictedNote}
                     </RestrictedNotice>
                   ) : (
                     <RestrictedNotice>

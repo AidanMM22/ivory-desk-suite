@@ -2,8 +2,8 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { toast } from "sonner";
 import { useAuth } from "./auth";
 import { useCrmData } from "./crm-data";
-import { notifications as seedNotifications, tasks as seedTasks, locations } from "./mock/data";
-import type { NotificationItem, Role, Task } from "./mock/types";
+import { notifications as seedNotifications, tasks as seedTasks, locations } from "./data";
+import type { NotificationItem, Role, Task } from "./types";
 
 export type QuickAction = "lead" | "appointment" | "message" | "task" | null;
 
@@ -48,7 +48,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { membership, user } = useAuth();
   const { persistRecord } = useCrmData();
   const role = membership?.role ?? "owner";
-  const [locationId, setLocationId] = useState(locations[0]!.id);
+  const [locationId, setLocationId] = useState(locations[0]?.id ?? "all");
   const [dateRange, setDateRange] = useState("last_30");
   const [notifications, setNotifications] = useState<NotificationItem[]>(seedNotifications);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);

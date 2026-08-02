@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, SectionTitle, EmptyState } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
-import { auditLog, BUSINESS, locations, messageTemplates, services, team } from "@/lib/mock/data";
+import { auditLog, BUSINESS, locations, messageTemplates, services, team } from "@/lib/data";
 import { currency, dateTime, leadStages, roleLabel } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -205,7 +205,10 @@ function SettingsPage() {
                     <span className="text-xs text-muted-foreground">{roleLabel[m.role]}</span>
                   </div>
                 ))}
-                <Button variant="outline" onClick={() => toast.success("Invite sent (mock)")}>
+                <Button
+                  variant="outline"
+                  onClick={() => toast.info("Team invitations require the invitation workflow.")}
+                >
                   Invite teammate
                 </Button>
               </CardContent>

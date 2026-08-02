@@ -22,10 +22,10 @@ import {
   leads,
   messageTemplates,
   team,
-} from "@/lib/mock/data";
+} from "@/lib/data";
 import { dateTime, initialsOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Conversation } from "@/lib/mock/types";
+import type { Conversation } from "@/lib/types";
 import { useCrmData } from "@/lib/crm-data";
 
 export const Route = createFileRoute("/inbox")({
@@ -51,7 +51,7 @@ function InboxPage() {
   const { persistRecord } = useCrmData();
   const [filter, setFilter] = useState("all");
   const [items, setItems] = useState<Conversation[]>(seedConversations);
-  const [activeId, setActiveId] = useState(seedConversations[0]!.id);
+  const [activeId, setActiveId] = useState(seedConversations[0]?.id ?? "");
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState("reply");
 
@@ -84,7 +84,7 @@ function InboxPage() {
     <div className="mx-auto max-w-[1500px] space-y-6">
       <PageHeader
         title="Inbox"
-        description={`${items.filter((c) => c.unread).length} unread · SMS and email are simulated in this practice workspace`}
+        description={`${items.filter((c) => c.unread).length} unread · connect a messaging provider to send SMS or email`}
       />
 
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)_300px]">
@@ -242,7 +242,7 @@ function InboxPage() {
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder={
                     mode === "reply"
-                      ? "Write a reply — messaging is simulated"
+                      ? "Write a reply — delivery requires a messaging provider"
                       : "Visible to the team only"
                   }
                   className={mode === "note" ? "bg-gold/10" : undefined}

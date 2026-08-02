@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
-import { reviews as seedReviews } from "@/lib/mock/data";
+import { reviews as seedReviews } from "@/lib/data";
 import { useCrmData } from "@/lib/crm-data";
-import type { Review } from "@/lib/mock/types";
+import type { Review } from "@/lib/types";
 
 const reviewFunnel: { label: string; value: number }[] = [
   { label: "Requests sent", value: 186 },

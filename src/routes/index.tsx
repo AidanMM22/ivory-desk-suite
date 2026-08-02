@@ -32,7 +32,7 @@ import {
   serviceByKey,
   therapists,
   TODAY,
-} from "@/lib/mock/data";
+} from "@/lib/data";
 import {
   addMinutesLabel,
   appointmentStatusLabel,
@@ -119,6 +119,7 @@ function Dashboard() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
                 {locations.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
                     {l.name}

@@ -10,11 +10,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
-import { appointments, therapists } from "@/lib/mock/data";
+import { appointments, therapists } from "@/lib/data";
 import { clockTime, dateTime, initialsOf } from "@/lib/format";
 
 const percent = (n: number) => `${Math.round(n * (n <= 1 ? 100 : 1))}%`;
-import type { Therapist } from "@/lib/mock/types";
+import type { Therapist } from "@/lib/types";
 
 export const Route = createFileRoute("/therapists")({
   head: () => ({

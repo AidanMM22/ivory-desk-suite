@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CrmDataProvider } from "@/lib/crm-data";
-import type { Role } from "@/lib/mock/types";
+import type { Role } from "@/lib/types";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 interface Membership {
@@ -176,11 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {isSupabaseConfigured && session?.user && membership ? (
-        <CrmDataProvider
-          workspaceId={membership.workspaceId}
-          userId={session.user.id}
-          role={membership.role}
-        >
+        <CrmDataProvider workspaceId={membership.workspaceId} userId={session.user.id}>
           {children}
         </CrmDataProvider>
       ) : (
@@ -320,8 +316,7 @@ function WorkspaceSetup({
         <CardHeader>
           <CardTitle className="font-display text-2xl">Set up your workspace</CardTitle>
           <CardDescription>
-            Signed in as {user.email}. This creates your isolated CRM and imports the starter data
-            once.
+            Signed in as {user.email}. This creates a new, empty CRM workspace.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

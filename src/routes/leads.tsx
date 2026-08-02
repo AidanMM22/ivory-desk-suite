@@ -41,11 +41,11 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, EmptyState, SectionTitle } from "@/components/shared/page";
 import { ConsentChip, StatusChip } from "@/components/shared/chips";
-import { activity, leads as seedLeads, serviceByKey, team, TODAY } from "@/lib/mock/data";
+import { activity, leads as seedLeads, serviceByKey, team, TODAY } from "@/lib/data";
 import { currency, dateTime, leadStages, stageLabel, stageTone } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 import { useCrmData } from "@/lib/crm-data";
-import type { Lead, LeadStage } from "@/lib/mock/types";
+import type { Lead, LeadStage } from "@/lib/types";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -193,14 +193,14 @@ function LeadsPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => toast.success("Bulk SMS queued (mock)")}
+            onClick={() => toast.info("Connect an SMS provider to send bulk messages.")}
           >
             Send SMS
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => toast.success("Owner reassigned (mock)")}
+            onClick={() => toast.info("Choose an active workspace member to reassign these leads.")}
           >
             Assign owner
           </Button>
@@ -411,7 +411,10 @@ function LeadDrawer({
                 <Button onClick={onBook}>
                   <CalendarPlus className="mr-2 h-4 w-4" /> Book appointment
                 </Button>
-                <Button variant="outline" onClick={() => toast.success("Message queued (mock)")}>
+                <Button
+                  variant="outline"
+                  onClick={() => toast.info("Connect a messaging provider before sending.")}
+                >
                   <MessageSquare className="mr-2 h-4 w-4" /> Send message
                 </Button>
                 <Button variant="outline" onClick={() => toast.success("Task created")}>

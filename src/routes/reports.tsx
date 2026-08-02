@@ -23,7 +23,7 @@ import {
   revenueTrend,
   services,
   therapists,
-} from "@/lib/mock/data";
+} from "@/lib/data";
 import { currency } from "@/lib/format";
 
 const percent = (n: number) => `${Math.round(n <= 1 ? n * 100 : n)}%`;
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/reports")({
           "Revenue trends, bookings by source and service, conversion funnel, retention, and automation performance for M&M Massage Spa.",
       },
       { property: "og:title", content: "Reports — M&M Spa CRM" },
-      { property: "og:description", content: "Operational analytics with realistic sample data." },
+      { property: "og:description", content: "Operational analytics from CRM records." },
     ],
   }),
   component: ReportsPage,
@@ -50,10 +50,7 @@ const PIE = ["var(--sage)", "var(--eucalyptus)", "var(--gold)", "var(--muted-for
 function ReportsPage() {
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
-      <PageHeader
-        title="Reports"
-        description="Trailing 6 months · sample data for this practice workspace"
-      />
+      <PageHeader title="Reports" description="Analytics calculated from your workspace records" />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="surface-soft">

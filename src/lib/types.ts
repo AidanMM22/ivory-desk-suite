@@ -1,7 +1,6 @@
 /**
  * Central domain types for M&M Spa CRM.
- * Phase 1 uses in-memory mock data; these shapes are designed so that
- * a Supabase query layer can replace `src/lib/mock/data.ts` later
+ * Domain shapes used by the Supabase-backed CRM.
  * without touching UI components.
  */
 
@@ -19,7 +18,8 @@ export interface Consent {
   updatedAt: string;
 }
 
-export type ServiceKey = "swedish" | "deep-tissue" | "couples" | "hot-stone" | "prenatal";
+export type ServiceKey =
+  "unspecified" | "swedish" | "deep-tissue" | "couples" | "hot-stone" | "prenatal";
 
 export interface Service {
   id: ID;
@@ -31,13 +31,7 @@ export interface Service {
   active: boolean;
 }
 
-export type LeadStage =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "booking_pending"
-  | "booked"
-  | "lost";
+export type LeadStage = "new" | "contacted" | "qualified" | "booking_pending" | "booked" | "lost";
 
 export type LeadSource =
   | "Website booking"
@@ -91,12 +85,7 @@ export interface Client {
 }
 
 export type AppointmentStatus =
-  | "confirmed"
-  | "pending"
-  | "checked_in"
-  | "completed"
-  | "cancelled"
-  | "no_show";
+  "confirmed" | "pending" | "checked_in" | "completed" | "cancelled" | "no_show";
 
 export interface Appointment {
   id: ID;
@@ -167,9 +156,7 @@ export interface Task {
   title: string;
   dueAt: string;
   ownerId: ID;
-  relatedTo?:
-    | { type: "lead" | "client" | "appointment"; id: ID; label: string }
-    | undefined;
+  relatedTo?: { type: "lead" | "client" | "appointment"; id: ID; label: string } | undefined;
   priority: "low" | "normal" | "high";
   done: boolean;
 }

@@ -9,7 +9,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useWorkspace } from "@/lib/workspace";
-import { clients, leads, appointments } from "@/lib/mock/data";
+import { clients, leads, appointments } from "@/lib/data";
 import { dateTime } from "@/lib/format";
 import { navItems } from "./AppShell";
 
@@ -26,7 +26,7 @@ export function CommandPalette() {
     <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen}>
       <CommandInput placeholder="Search or jump to…" />
       <CommandList>
-        <CommandEmpty>No matches in this practice workspace.</CommandEmpty>
+        <CommandEmpty>No matching CRM records.</CommandEmpty>
         <CommandGroup heading="Navigate">
           {navItems.map((item) => (
             <CommandItem key={item.to} value={`go ${item.label}`} onSelect={() => go(item.to)}>
