@@ -1,4 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { useAuth } from "./auth";
+import { useCrmData } from "./crm-data";
 import { notifications as seedNotifications, tasks as seedTasks, locations } from "./mock/data";
 import type { NotificationItem, Role, Task } from "./mock/types";
 
@@ -25,11 +28,7 @@ interface WorkspaceValue {
 }
 
 export type Permission =
-  | "settings.business"
-  | "settings.team"
-  | "reports.revenue"
-  | "clients.allNotes"
-  | "campaigns.send";
+  "settings.business" | "settings.team" | "reports.revenue" | "clients.allNotes" | "campaigns.send";
 
 const permissions: Record<Role, Permission[]> = {
   owner: [
@@ -46,7 +45,9 @@ const permissions: Record<Role, Permission[]> = {
 const WorkspaceContext = createContext<WorkspaceValue | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<Role>("owner");
+  const { membership, user } = useAuth();
+  const { persistRecord } = useCrmData();
+  const role = membership?.role ?? "owner";
   const [locationId, setLocationId] = useState(locations[0]!.id);
   const [dateRange, setDateRange] = useState("last_30");
   const [notifications, setNotifications] = useState<NotificationItem[]>(seedNotifications);
@@ -57,7 +58,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const value = useMemo<WorkspaceValue>(
     () => ({
       role,
-      setRole,
+      setRole: () => undefined,
       can: (permission) => permissions[role].includes(permission),
       locationId,
       setLocationId,
@@ -65,28 +66,60 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setDateRange,
       notifications,
       unreadCount: notifications.filter((n) => !n.read).length,
-      markAllRead: () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))),
+      markAllRead: () => {
+        const updated = notifications.map((notification) => ({ ...notification, read: true }));
+        setNotifications(updated);
+        void Promise.all(
+          updated.map((notification) =>
+            persistRecord("notifications", notification as unknown as Record<string, unknown>),
+          ),
+        ).catch(() => toast.error("Notifications could not be updated."));
+      },
       tasks,
-      toggleTask: (id) =>
-        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))),
-      addTask: (title, dueAt) =>
-        setTasks((prev) => [
-          {
-            id: `tk-${prev.length + 1}-${title.length}`,
-            title,
-            dueAt,
-            ownerId: "u-1",
-            priority: "normal",
-            done: false,
-          },
-          ...prev,
-        ]),
+      toggleTask: (id) => {
+        setTasks((prev) => {
+          const updated = prev.map((task) =>
+            task.id === id ? { ...task, done: !task.done } : task,
+          );
+          const changed = updated.find((task) => task.id === id);
+          if (changed) {
+            void persistRecord("tasks", changed as unknown as Record<string, unknown>).catch(() =>
+              toast.error("Task could not be updated."),
+            );
+          }
+          return updated;
+        });
+      },
+      addTask: (title, dueAt) => {
+        const task: Task = {
+          id: crypto.randomUUID(),
+          title,
+          dueAt,
+          ownerId: user?.id ?? "unassigned",
+          priority: "normal",
+          done: false,
+        };
+        setTasks((prev) => [task, ...prev]);
+        void persistRecord("tasks", task as unknown as Record<string, unknown>).catch(() =>
+          toast.error("Task could not be saved."),
+        );
+      },
       quickAction,
       setQuickAction,
       paletteOpen,
       setPaletteOpen,
     }),
-    [role, locationId, dateRange, notifications, tasks, quickAction, paletteOpen],
+    [
+      role,
+      locationId,
+      dateRange,
+      notifications,
+      tasks,
+      quickAction,
+      paletteOpen,
+      persistRecord,
+      user?.id,
+    ],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

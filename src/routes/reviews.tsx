@@ -8,7 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
-import { reviews } from "@/lib/mock/data";
+import { reviews as seedReviews } from "@/lib/mock/data";
+import { useCrmData } from "@/lib/crm-data";
+import type { Review } from "@/lib/mock/types";
 
 const reviewFunnel: { label: string; value: number }[] = [
   { label: "Requests sent", value: 186 },
@@ -38,7 +40,9 @@ export const Route = createFileRoute("/reviews")({
 });
 
 function ReviewsPage() {
+  const { persistRecord } = useCrmData();
   const [source, setSource] = useState("all");
+  const [reviews, setReviews] = useState<Review[]>(seedReviews);
   const [reply, setReply] = useState<Record<string, string>>({});
   const visible = reviews.filter((r) => source === "all" || r.source === source);
   const average = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
@@ -170,7 +174,18 @@ function ReviewsPage() {
                   <Button
                     size="sm"
                     disabled={!(reply[r.id] ?? "").trim()}
-                    onClick={() => toast.success("Response queued (mock)")}
+                    onClick={() => {
+                      const updated = { ...r, responded: true };
+                      setReviews((current) =>
+                        current.map((review) => (review.id === r.id ? updated : review)),
+                      );
+                      void persistRecord("reviews", updated).catch((error: unknown) =>
+                        toast.error(
+                          error instanceof Error ? error.message : "Could not save the response.",
+                        ),
+                      );
+                      toast.success("Response saved");
+                    }}
                   >
                     Post response
                   </Button>

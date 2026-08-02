@@ -26,6 +26,7 @@ import {
 import { dateTime, initialsOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/lib/mock/types";
+import { useCrmData } from "@/lib/crm-data";
 
 export const Route = createFileRoute("/inbox")({
   head: () => ({
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/inbox")({
 });
 
 function InboxPage() {
+  const { persistRecord } = useCrmData();
   const [filter, setFilter] = useState("all");
   const [items, setItems] = useState<Conversation[]>(seedConversations);
   const [activeId, setActiveId] = useState(seedConversations[0]!.id);
@@ -69,7 +71,13 @@ function InboxPage() {
 
   const openConversation = (id: string) => {
     setActiveId(id);
-    setItems((prev) => prev.map((c) => (c.id === id ? { ...c, unread: false } : c)));
+    const conversation = items.find((item) => item.id === id);
+    if (!conversation || !conversation.unread) return;
+    const updated = { ...conversation, unread: false };
+    setItems((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    void persistRecord("conversations", updated).catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not update the conversation."),
+    );
   };
 
   return (
@@ -163,8 +171,17 @@ function InboxPage() {
                   <Select
                     value={active.assignedToId ?? "unassigned"}
                     onValueChange={(v) => {
-                      setItems((prev) =>
-                        prev.map((c) => (c.id === active.id ? { ...c, assignedToId: v } : c)),
+                      const updated = {
+                        ...active,
+                        assignedToId: v === "unassigned" ? undefined : v,
+                      };
+                      setItems((prev) => prev.map((c) => (c.id === active.id ? updated : c)));
+                      void persistRecord("conversations", updated).catch((error: unknown) =>
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Could not reassign this conversation.",
+                        ),
                       );
                       toast.success("Conversation reassigned");
                     }}
@@ -246,9 +263,36 @@ function InboxPage() {
                   <Button
                     disabled={!draft.trim() || (mode === "reply" && optedOut)}
                     onClick={() => {
-                      toast.success(
-                        mode === "reply" ? "Message queued (mock)" : "Internal note saved",
+                      const now = new Date().toISOString();
+                      const updated: Conversation = {
+                        ...active,
+                        preview: draft.trim(),
+                        lastMessageAt: now,
+                        messages: [
+                          ...active.messages,
+                          {
+                            id: crypto.randomUUID(),
+                            conversationId: active.id,
+                            channel: mode === "reply" ? active.channel : "internal",
+                            direction: "outbound",
+                            body: draft.trim(),
+                            sentAt: now,
+                            authorName: mode === "reply" ? "Front desk" : "Internal note",
+                            status: "sent",
+                          },
+                        ],
+                      };
+                      setItems((current) =>
+                        current.map((conversation) =>
+                          conversation.id === active.id ? updated : conversation,
+                        ),
                       );
+                      void persistRecord("conversations", updated).catch((error: unknown) =>
+                        toast.error(
+                          error instanceof Error ? error.message : "Could not save the message.",
+                        ),
+                      );
+                      toast.success(mode === "reply" ? "Message saved" : "Internal note saved");
                       setDraft("");
                     }}
                   >

@@ -20,6 +20,7 @@ import { StatusChip } from "@/components/shared/chips";
 import { automations as seed } from "@/lib/mock/data";
 import { dateTime } from "@/lib/format";
 import type { Automation } from "@/lib/mock/types";
+import { useCrmData } from "@/lib/crm-data";
 
 export const Route = createFileRoute("/automations")({
   head: () => ({
@@ -41,15 +42,20 @@ export const Route = createFileRoute("/automations")({
 });
 
 function AutomationsPage() {
+  const { persistRecord } = useCrmData();
   const [rows, setRows] = useState<Automation[]>(seed);
   const [detail, setDetail] = useState<Automation | null>(null);
   const [builder, setBuilder] = useState(false);
 
   const toggle = (a: Automation) => {
-    const status = a.status === "active" ? "paused" : "active";
-    setRows((prev) => prev.map((r) => (r.id === a.id ? { ...r, status } : r)));
-    setDetail((cur) => (cur && cur.id === a.id ? { ...cur, status } : cur));
-    toast.success(`${a.name} ${status === "active" ? "activated" : "paused"} (mock)`);
+    const status: Automation["status"] = a.status === "active" ? "paused" : "active";
+    const updated: Automation = { ...a, status };
+    setRows((prev) => prev.map((r) => (r.id === a.id ? updated : r)));
+    setDetail((cur) => (cur && cur.id === a.id ? updated : cur));
+    void persistRecord("automations", updated).catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not save the automation."),
+    );
+    toast.success(`${a.name} ${status === "active" ? "activated" : "paused"}`);
   };
 
   return (

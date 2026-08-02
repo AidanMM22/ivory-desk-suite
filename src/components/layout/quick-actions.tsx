@@ -21,9 +21,33 @@ import {
 } from "@/components/ui/select";
 import { useWorkspace } from "@/lib/workspace";
 import { clients, leads, services, therapists, TODAY, locations } from "@/lib/mock/data";
+import { useCrmData } from "@/lib/crm-data";
+import type { Lead, LeadSource, ServiceKey } from "@/lib/mock/types";
+
+interface LeadDraft {
+  name: string;
+  phone: string;
+  email: string;
+  serviceInterest: ServiceKey;
+  source: LeadSource;
+  ownerId: string;
+  notes: string;
+}
+
+const emptyLead: LeadDraft = {
+  name: "",
+  phone: "",
+  email: "",
+  serviceInterest: "swedish",
+  source: "Website booking",
+  ownerId: "u-2",
+  notes: "",
+};
 
 export function QuickActionDialogs() {
   const { quickAction, setQuickAction, addTask } = useWorkspace();
+  const { persistRecord } = useCrmData();
+  const [leadDraft, setLeadDraft] = useState<LeadDraft>(emptyLead);
   const close = () => setQuickAction(null);
 
   return (
@@ -32,19 +56,51 @@ export function QuickActionDialogs() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">Add lead</DialogTitle>
-            <DialogDescription>
-              Practice workspace — new leads are stored in this session only.
-            </DialogDescription>
+            <DialogDescription>Add an inquiry to the shared lead pipeline.</DialogDescription>
           </DialogHeader>
-          <LeadForm />
+          <LeadForm value={leadDraft} onChange={setLeadDraft} />
           <DialogFooter>
             <Button variant="ghost" onClick={close}>
               Cancel
             </Button>
             <Button
+              disabled={
+                !leadDraft.name.trim() || (!leadDraft.phone.trim() && !leadDraft.email.trim())
+              }
               onClick={() => {
-                toast.success("Lead saved", { description: "Speed-to-lead follow-up queued (mock)." });
-                close();
+                const now = new Date().toISOString();
+                const lead: Lead = {
+                  id: crypto.randomUUID(),
+                  ...leadDraft,
+                  name: leadDraft.name.trim(),
+                  phone: leadDraft.phone.trim(),
+                  email: leadDraft.email.trim(),
+                  stage: "new",
+                  lastContactAt: now,
+                  nextFollowUpAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+                  value:
+                    services.find((service) => service.key === leadDraft.serviceInterest)?.price ??
+                    0,
+                  consent: {
+                    sms: "pending",
+                    email: "pending",
+                    marketing: false,
+                    updatedAt: now,
+                  },
+                  locationId: locations[0]?.id ?? "loc-1",
+                  createdAt: now,
+                };
+                void persistRecord("leads", lead, lead.locationId)
+                  .then(() => {
+                    setLeadDraft(emptyLead);
+                    toast.success("Lead saved");
+                    close();
+                  })
+                  .catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error ? error.message : "Could not save the lead.",
+                    ),
+                  );
               }}
             >
               Save lead
@@ -57,9 +113,7 @@ export function QuickActionDialogs() {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Book appointment</DialogTitle>
-            <DialogDescription>
-              Tacoma, WA · questions? {locations[0]!.phone}
-            </DialogDescription>
+            <DialogDescription>Tacoma, WA · questions? {locations[0]!.phone}</DialogDescription>
           </DialogHeader>
           <BookingForm />
           <DialogFooter>
@@ -128,20 +182,45 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function LeadForm() {
+export function LeadForm({
+  value,
+  onChange,
+}: {
+  value: LeadDraft;
+  onChange: (value: LeadDraft) => void;
+}) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Full name">
-        <Input id="full-name" placeholder="Jamie Ortega" />
+        <Input
+          id="full-name"
+          placeholder="Jamie Ortega"
+          value={value.name}
+          onChange={(event) => onChange({ ...value, name: event.target.value })}
+        />
       </Field>
       <Field label="Phone">
-        <Input id="phone" placeholder="(253) 555-0123" />
+        <Input
+          id="phone"
+          placeholder="(253) 555-0123"
+          value={value.phone}
+          onChange={(event) => onChange({ ...value, phone: event.target.value })}
+        />
       </Field>
       <Field label="Email">
-        <Input id="email" type="email" placeholder="jamie@example.com" />
+        <Input
+          id="email"
+          type="email"
+          placeholder="jamie@example.com"
+          value={value.email}
+          onChange={(event) => onChange({ ...value, email: event.target.value })}
+        />
       </Field>
       <Field label="Service interest">
-        <Select defaultValue="swedish">
+        <Select
+          value={value.serviceInterest}
+          onValueChange={(serviceInterest: ServiceKey) => onChange({ ...value, serviceInterest })}
+        >
           <SelectTrigger id="service-interest">
             <SelectValue />
           </SelectTrigger>
@@ -155,7 +234,10 @@ export function LeadForm() {
         </Select>
       </Field>
       <Field label="Source">
-        <Select defaultValue="Website booking">
+        <Select
+          value={value.source}
+          onValueChange={(source: LeadSource) => onChange({ ...value, source })}
+        >
           <SelectTrigger id="source">
             <SelectValue />
           </SelectTrigger>
@@ -177,7 +259,7 @@ export function LeadForm() {
         </Select>
       </Field>
       <Field label="Owner">
-        <Select defaultValue="u-2">
+        <Select value={value.ownerId} onValueChange={(ownerId) => onChange({ ...value, ownerId })}>
           <SelectTrigger id="owner">
             <SelectValue />
           </SelectTrigger>
@@ -189,7 +271,13 @@ export function LeadForm() {
       </Field>
       <div className="sm:col-span-2">
         <Field label="Notes">
-          <Textarea id="notes" placeholder="What are they looking for?" rows={3} />
+          <Textarea
+            id="notes"
+            placeholder="What are they looking for?"
+            rows={3}
+            value={value.notes}
+            onChange={(event) => onChange({ ...value, notes: event.target.value })}
+          />
         </Field>
       </div>
     </div>
@@ -305,7 +393,11 @@ export function BookingForm() {
       </Field>
       <div className="sm:col-span-2">
         <Field label="Appointment notes">
-          <Textarea id="appointment-notes" rows={2} placeholder="Preferences, add-ons, arrival notes" />
+          <Textarea
+            id="appointment-notes"
+            rows={2}
+            placeholder="Preferences, add-ons, arrival notes"
+          />
         </Field>
       </div>
     </div>
@@ -366,7 +458,7 @@ export function TaskDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display">Create task</DialogTitle>
-          <DialogDescription>Tasks live in this practice workspace session.</DialogDescription>
+          <DialogDescription>Tasks are shared with your workspace.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <Field label="Task">

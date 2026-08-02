@@ -20,6 +20,7 @@ import { StatusChip } from "@/components/shared/chips";
 import { auditLog, BUSINESS, locations, messageTemplates, services, team } from "@/lib/mock/data";
 import { currency, dateTime, leadStages, roleLabel } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -42,11 +43,11 @@ export const Route = createFileRoute("/settings")({
 
 const integrations = [
   {
-    name: "Supabase (Lovable Cloud)",
-    detail: "Database, auth, and storage",
-    status: "Not connected",
+    name: "Supabase",
+    detail: "Database and authentication",
+    status: isSupabaseConfigured ? "Connected" : "Needs environment variables",
   },
-  { name: "GitHub", detail: "Source control sync", status: "Not connected" },
+  { name: "GitHub", detail: "Source control sync", status: "Connected" },
   { name: "Twilio", detail: "SMS + missed-call text back", status: "Placeholder" },
   { name: "Email provider", detail: "Transactional + campaign email", status: "Placeholder" },
   { name: "Google Business Profile", detail: "Reviews and profile leads", status: "Placeholder" },
@@ -63,10 +64,7 @@ function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
-      <PageHeader
-        title="Settings"
-        description={`Viewing as ${roleLabel[role]} · practice workspace`}
-      />
+      <PageHeader title="Settings" description={`Workspace access · ${roleLabel[role]}`} />
 
       <Tabs defaultValue="business">
         <TabsList className="flex-wrap">
@@ -216,7 +214,7 @@ function SettingsPage() {
             <EmptyState
               icon={<Lock className="h-6 w-6" />}
               title="Team &amp; roles are Owner-only"
-              description="Switch to the Owner role preview to manage team access."
+              description="An Owner account is required to manage team access."
             />
           )}
         </TabsContent>

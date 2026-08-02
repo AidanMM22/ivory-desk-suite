@@ -6,6 +6,7 @@ import {
   CheckSquare,
   Inbox,
   LayoutDashboard,
+  LogOut,
   Megaphone,
   MessageSquarePlus,
   Search,
@@ -36,9 +37,9 @@ import { cn } from "@/lib/utils";
 import { BUSINESS } from "@/lib/mock/data";
 import { dateTime, roleLabel } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
+import { useAuth } from "@/lib/auth";
 import { CommandPalette } from "./CommandPalette";
 import { QuickActionDialogs } from "./quick-actions";
-import type { Role } from "@/lib/mock/types";
 
 export const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -187,25 +188,34 @@ function TaskPanel() {
   );
 }
 
-function RoleSwitcher() {
-  const { role, setRole } = useWorkspace();
-  const roles: Role[] = ["owner", "front_desk", "therapist"];
+function AccountMenu() {
+  const { user, membership, signOut } = useAuth();
+  const displayName =
+    (user?.user_metadata["full_name"] as string | undefined)?.trim() || user?.email || "Account";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <span className="hidden sm:inline text-muted-foreground">Viewing as</span>
-          {roleLabel[role]}
+          <UsersRound className="h-4 w-4" />
+          <span className="hidden max-w-32 truncate sm:inline">{displayName}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Preview permissions</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel>
+          <span className="block truncate">{displayName}</span>
+          <span className="mt-0.5 block truncate font-normal text-muted-foreground">
+            {membership
+              ? `${membership.workspaceName} · ${roleLabel[membership.role]}`
+              : "Local preview"}
+          </span>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {roles.map((r) => (
-          <DropdownMenuItem key={r} onSelect={() => setRole(r)}>
-            {roleLabel[r]}
+        {user ? (
+          <DropdownMenuItem onSelect={() => void signOut()}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
           </DropdownMenuItem>
-        ))}
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -264,7 +274,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="px-5 py-4 text-xs text-muted-foreground">
-          <p className="font-medium text-sidebar-foreground/80">Practice workspace</p>
+          <p className="font-medium text-sidebar-foreground/80">{BUSINESS.name}</p>
           <p className="mt-1">{BUSINESS.phone}</p>
           <p>{BUSINESS.city}</p>
         </div>
@@ -308,7 +318,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
               <TaskPanel />
               <NotificationCenter />
-              <RoleSwitcher />
+              <AccountMenu />
               <QuickActionMenu />
             </div>
           </div>
@@ -317,8 +327,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
 
         <footer className="border-t border-border px-4 py-4 text-xs text-muted-foreground sm:px-6 lg:px-8">
-          M&amp;M Massage Spa · {BUSINESS.city} · {BUSINESS.phone} — practice workspace with mock
-          data. Messaging, payments, and automation execution are not connected.
+          M&amp;M Massage Spa · {BUSINESS.city} · {BUSINESS.phone} — messaging, payments, and
+          automation delivery require provider connections.
         </footer>
       </div>
 

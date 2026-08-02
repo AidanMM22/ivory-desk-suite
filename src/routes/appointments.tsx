@@ -50,6 +50,7 @@ import {
   shortDate,
 } from "@/lib/format";
 import type { Appointment } from "@/lib/mock/types";
+import { useCrmData } from "@/lib/crm-data";
 
 export const Route = createFileRoute("/appointments")({
   head: () => ({
@@ -71,9 +72,9 @@ export const Route = createFileRoute("/appointments")({
 });
 
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
-const rooms = locations[0]!.rooms;
-
 function AppointmentsPage() {
+  const { persistRecord } = useCrmData();
+  const rooms = locations[0]?.rooms ?? [];
   const [view, setView] = useState("day");
   const [therapistFilter, setTherapistFilter] = useState("all");
   const [roomFilter, setRoomFilter] = useState("all");
@@ -97,8 +98,12 @@ function AppointmentsPage() {
   const today = filtered.filter((a) => a.start.startsWith(TODAY));
 
   const setStatus = (appt: Appointment, status: Appointment["status"], message: string) => {
-    setRows((prev) => prev.map((a) => (a.id === appt.id ? { ...a, status } : a)));
-    setDetail((cur) => (cur && cur.id === appt.id ? { ...cur, status } : cur));
+    const updated = { ...appt, status };
+    setRows((prev) => prev.map((a) => (a.id === appt.id ? updated : a)));
+    setDetail((cur) => (cur && cur.id === appt.id ? updated : cur));
+    void persistRecord("appointments", updated, updated.locationId).catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not save the appointment."),
+    );
     toast.success(message);
   };
 

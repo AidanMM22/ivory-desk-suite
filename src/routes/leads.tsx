@@ -44,6 +44,7 @@ import { ConsentChip, StatusChip } from "@/components/shared/chips";
 import { activity, leads as seedLeads, serviceByKey, team, TODAY } from "@/lib/mock/data";
 import { currency, dateTime, leadStages, stageLabel, stageTone } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
+import { useCrmData } from "@/lib/crm-data";
 import type { Lead, LeadStage } from "@/lib/mock/types";
 
 export const Route = createFileRoute("/leads")({
@@ -66,6 +67,7 @@ const ownerName = (id: string) => team.find((t) => t.id === id)?.name ?? "Unassi
 
 function LeadsPage() {
   const { setQuickAction } = useWorkspace();
+  const { persistRecord } = useCrmData();
   const [view, setView] = useState("kanban");
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
@@ -97,8 +99,12 @@ function LeadsPage() {
   }, [leads, query, stageFilter, sourceFilter, sort]);
 
   const moveStage = (lead: Lead, stage: LeadStage) => {
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, stage } : l)));
-    setOpenLead((cur) => (cur && cur.id === lead.id ? { ...cur, stage } : cur));
+    const updated = { ...lead, stage };
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? updated : l)));
+    setOpenLead((cur) => (cur && cur.id === lead.id ? updated : cur));
+    void persistRecord("leads", updated, updated.locationId).catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not save the lead."),
+    );
     toast.success(`${lead.name} moved to ${stageLabel(stage)}`);
   };
 

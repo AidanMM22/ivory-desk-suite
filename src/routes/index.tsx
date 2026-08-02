@@ -43,6 +43,7 @@ import {
   leadStages,
 } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -63,26 +64,43 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const kpis = [
-  { label: "New leads", value: "38", delta: "+12% vs prior 30d" },
-  { label: "Booked appointments", value: "142", delta: "+8% vs prior 30d" },
-  { label: "Lead → booking", value: "36.4%", delta: "+2.1 pts" },
-  { label: "Revenue", value: currency(51240), delta: "+9% vs prior 30d" },
-];
-
 function Dashboard() {
+  const { user } = useAuth();
   const { setQuickAction, dateRange, setDateRange, locationId, setLocationId, tasks, toggleTask } =
     useWorkspace();
   const todays = appointments
     .filter((a) => a.start.startsWith(TODAY))
     .sort((a, b) => a.start.localeCompare(b.start));
   const openTasks = tasks.filter((t) => !t.done);
+  const bookedLeads = leads.filter((lead) => lead.stage === "booked").length;
+  const realizedRevenue = appointments
+    .filter((appointment) => appointment.payment === "paid")
+    .reduce((sum, appointment) => sum + appointment.price, 0);
+  const kpis = [
+    { label: "Leads", value: String(leads.length), delta: "Current workspace" },
+    {
+      label: "Appointments",
+      value: String(appointments.length),
+      delta: `${todays.length} scheduled today`,
+    },
+    {
+      label: "Lead → booking",
+      value: leads.length ? `${((bookedLeads / leads.length) * 100).toFixed(1)}%` : "0%",
+      delta: `${bookedLeads} converted leads`,
+    },
+    { label: "Collected revenue", value: currency(realizedRevenue), delta: "Paid appointments" },
+  ];
+  const firstName = (
+    (user?.user_metadata["full_name"] as string | undefined) ||
+    user?.email ||
+    "there"
+  ).split(/[ @]/)[0];
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
       <PageHeader
-        title="Good morning, Marisol"
-        description="Tacoma, WA · (253) 753-4727 — practice workspace with mock data."
+        title={`Good morning, ${firstName}`}
+        description="Live workspace overview for M&M Massage Spa."
         actions={
           <>
             <Select value={dateRange} onValueChange={setDateRange}>
