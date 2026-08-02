@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CalendarPlus,
-  Filter,
   KanbanSquare,
   LayoutList,
   MessageSquare,
@@ -43,13 +42,7 @@ import {
 import { PageHeader, EmptyState, SectionTitle } from "@/components/shared/page";
 import { ConsentChip, StatusChip } from "@/components/shared/chips";
 import { activity, leads as seedLeads, serviceByKey, team, TODAY } from "@/lib/mock/data";
-import {
-  currency,
-  dateTime,
-  leadStages,
-  stageLabel,
-  stageTone,
-} from "@/lib/format";
+import { currency, dateTime, leadStages, stageLabel, stageTone } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 import type { Lead, LeadStage } from "@/lib/mock/types";
 
@@ -184,14 +177,18 @@ function LeadsPage() {
               <SelectItem value="name">Name A–Z</SelectItem>
             </SelectContent>
           </Select>
-          <StatusChip icon={<Filter className="h-3 w-3" />}>{filtered.length} shown</StatusChip>
+          <span className="ml-auto text-xs text-muted-foreground">{filtered.length} leads</span>
         </CardContent>
       </Card>
 
       {selected.length > 0 ? (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/25 bg-secondary px-4 py-3">
           <p className="text-sm font-medium">{selected.length} selected</p>
-          <Button size="sm" variant="outline" onClick={() => toast.success("Bulk SMS queued (mock)")}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => toast.success("Bulk SMS queued (mock)")}
+          >
             Send SMS
           </Button>
           <Button
@@ -248,13 +245,12 @@ function LeadsPage() {
                         <p className="mt-1 text-xs text-muted-foreground">
                           {serviceByKey(l.serviceInterest).name}
                         </p>
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          <StatusChip tone="neutral">{l.source}</StatusChip>
-                          <ConsentChip channel="SMS" state={l.consent.sms} />
-                        </div>
                         <p className="mt-2 text-xs text-muted-foreground">
-                          Last contact {dateTime(l.lastContactAt)}
+                          {l.source} · Last contact {dateTime(l.lastContactAt)}
                         </p>
+                        {l.consent.sms !== "granted" ? (
+                          <ConsentChip channel="SMS" state={l.consent.sms} />
+                        ) : null}
                         {l.nextFollowUpAt ? (
                           <p className="text-xs text-muted-foreground">
                             Follow-up {dateTime(l.nextFollowUpAt)}
@@ -310,7 +306,9 @@ function LeadsPage() {
                       <StatusChip tone={stageTone[l.stage]}>{stageLabel(l.stage)}</StatusChip>
                     </TableCell>
                     <TableCell className="text-sm">{l.source}</TableCell>
-                    <TableCell className="text-sm">{serviceByKey(l.serviceInterest).name}</TableCell>
+                    <TableCell className="text-sm">
+                      {serviceByKey(l.serviceInterest).name}
+                    </TableCell>
                     <TableCell className="text-sm">{ownerName(l.ownerId)}</TableCell>
                     <TableCell className="text-sm">{dateTime(l.lastContactAt)}</TableCell>
                     <TableCell className="text-sm">
@@ -318,7 +316,15 @@ function LeadsPage() {
                     </TableCell>
                     <TableCell className="text-right text-sm">{currency(l.value)}</TableCell>
                     <TableCell>
-                      <ConsentChip channel="SMS" state={l.consent.sms} />
+                      <span
+                        className={
+                          l.consent.sms === "granted"
+                            ? "text-xs text-muted-foreground"
+                            : "text-xs font-medium text-destructive"
+                        }
+                      >
+                        {l.consent.sms === "granted" ? "Allowed" : l.consent.sms}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -364,21 +370,17 @@ function LeadDrawer({
               </SheetDescription>
             </SheetHeader>
             <div className="space-y-6 px-4 pb-8">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <StatusChip tone={stageTone[lead.stage]}>{stageLabel(lead.stage)}</StatusChip>
-                <StatusChip>{lead.source}</StatusChip>
-                <StatusChip tone="gold">{currency(lead.value)} potential</StatusChip>
-                <ConsentChip channel="SMS" state={lead.consent.sms} />
-                <ConsentChip channel="Email" state={lead.consent.email} />
+                <span className="text-sm text-muted-foreground">
+                  {lead.source} · {currency(lead.value)} potential
+                </span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="stage-select">Stage</Label>
-                  <Select
-                    value={lead.stage}
-                    onValueChange={(v) => onStage(lead, v as LeadStage)}
-                  >
+                  <Select value={lead.stage} onValueChange={(v) => onStage(lead, v as LeadStage)}>
                     <SelectTrigger id="stage-select">
                       <SelectValue />
                     </SelectTrigger>
@@ -456,7 +458,9 @@ function LeadDrawer({
                   <li>
                     <p className="text-sm font-medium">Next follow-up</p>
                     <p className="text-xs text-muted-foreground">
-                      {lead.nextFollowUpAt ? dateTime(lead.nextFollowUpAt) : `Not scheduled (today is ${TODAY})`}
+                      {lead.nextFollowUpAt
+                        ? dateTime(lead.nextFollowUpAt)
+                        : `Not scheduled (today is ${TODAY})`}
                     </p>
                   </li>
                 </ol>

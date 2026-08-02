@@ -41,7 +41,6 @@ import {
   currency,
   dateTime,
   leadStages,
-  stageTone,
 } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 
@@ -65,13 +64,10 @@ export const Route = createFileRoute("/")({
 });
 
 const kpis = [
-  { label: "New leads", value: "38", delta: "+12% vs prior 30d", tone: "positive" as const },
-  { label: "Booked appointments", value: "142", delta: "+8% vs prior 30d", tone: "positive" as const },
-  { label: "Lead → booking", value: "36.4%", delta: "+2.1 pts", tone: "positive" as const },
-  { label: "Revenue", value: currency(51240), delta: "+9% vs prior 30d", tone: "positive" as const },
-  { label: "Rebooking rate", value: "54%", delta: "Goal 60%", tone: "warning" as const },
-  { label: "No-show rate", value: "3.2%", delta: "-0.8 pts", tone: "positive" as const },
-  { label: "Review rating", value: "4.8", delta: "127 Google reviews", tone: "gold" as const },
+  { label: "New leads", value: "38", delta: "+12% vs prior 30d" },
+  { label: "Booked appointments", value: "142", delta: "+8% vs prior 30d" },
+  { label: "Lead → booking", value: "36.4%", delta: "+2.1 pts" },
+  { label: "Revenue", value: currency(51240), delta: "+9% vs prior 30d" },
 ];
 
 function Dashboard() {
@@ -139,9 +135,7 @@ function Dashboard() {
                 {k.label}
               </p>
               <p className="font-display mt-2 text-3xl">{k.value}</p>
-              <StatusChip tone={k.tone} className="mt-3">
-                {k.delta}
-              </StatusChip>
+              <p className="mt-2 text-xs text-muted-foreground">{k.delta}</p>
             </CardContent>
           </Card>
         ))}
@@ -150,7 +144,9 @@ function Dashboard() {
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="surface-soft xl:col-span-2">
           <CardHeader className="flex-row items-center justify-between gap-3">
-            <CardTitle className="font-display text-lg">Today&apos;s schedule by therapist</CardTitle>
+            <CardTitle className="font-display text-lg">
+              Today&apos;s schedule by therapist
+            </CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/appointments">
                 Open calendar <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
@@ -207,9 +203,7 @@ function Dashboard() {
               return (
                 <div key={stage.key} className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <StatusChip tone={stageTone[stage.key]}>{stage.label}</StatusChip>
-                    </span>
+                    <span className="text-muted-foreground">{stage.label}</span>
                     <span className="font-medium">{count}</span>
                   </div>
                   <Progress value={(count / Math.max(leads.length, 1)) * 100} className="h-1.5" />
@@ -287,7 +281,13 @@ function Dashboard() {
                     </p>
                   </div>
                   <StatusChip
-                    tone={a.status === "active" ? "positive" : a.status === "paused" ? "warning" : "neutral"}
+                    tone={
+                      a.status === "active"
+                        ? "positive"
+                        : a.status === "paused"
+                          ? "warning"
+                          : "neutral"
+                    }
                   >
                     {a.status}
                   </StatusChip>

@@ -17,14 +17,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, SectionTitle, EmptyState } from "@/components/shared/page";
 import { StatusChip } from "@/components/shared/chips";
-import {
-  auditLog,
-  BUSINESS,
-  locations,
-  messageTemplates,
-  services,
-  team,
-} from "@/lib/mock/data";
+import { auditLog, BUSINESS, locations, messageTemplates, services, team } from "@/lib/mock/data";
 import { currency, dateTime, leadStages, roleLabel } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 
@@ -38,20 +31,31 @@ export const Route = createFileRoute("/settings")({
           "Configure business profile, services and pricing, rooms, team roles, templates, consent, and integrations for M&M Massage Spa.",
       },
       { property: "og:title", content: "Settings — M&M Spa CRM" },
-      { property: "og:description", content: "Business profile, services, team, templates, and integrations." },
+      {
+        property: "og:description",
+        content: "Business profile, services, team, templates, and integrations.",
+      },
     ],
   }),
   component: SettingsPage,
 });
 
 const integrations = [
-  { name: "Supabase (Lovable Cloud)", detail: "Database, auth, and storage", status: "Not connected" },
+  {
+    name: "Supabase (Lovable Cloud)",
+    detail: "Database, auth, and storage",
+    status: "Not connected",
+  },
   { name: "GitHub", detail: "Source control sync", status: "Not connected" },
   { name: "Twilio", detail: "SMS + missed-call text back", status: "Placeholder" },
   { name: "Email provider", detail: "Transactional + campaign email", status: "Placeholder" },
   { name: "Google Business Profile", detail: "Reviews and profile leads", status: "Placeholder" },
   { name: "Stripe", detail: "Deposits, packages, gift cards", status: "Placeholder" },
-  { name: `${BUSINESS.website} booking`, detail: "Existing website booking source", status: "Placeholder" },
+  {
+    name: `${BUSINESS.website} booking`,
+    detail: "Existing website booking source",
+    status: "Placeholder",
+  },
 ];
 
 function SettingsPage() {
@@ -109,13 +113,9 @@ function SettingsPage() {
                       <p className="text-xs text-muted-foreground">
                         {l.address} · {l.phone}
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {l.rooms.map((r) => (
-                          <StatusChip key={r.id}>
-                            {r.name} · {r.type}
-                          </StatusChip>
-                        ))}
-                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {l.rooms.map((r) => `${r.name} · ${r.type}`).join("  /  ")}
+                      </p>
                     </div>
                   ))}
                 </CardContent>
@@ -135,7 +135,10 @@ function SettingsPage() {
                     "Notify on no-shows",
                     "Quiet hours 9:00p–8:00a",
                   ].map((p, i) => (
-                    <label key={p} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
+                    <label
+                      key={p}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
+                    >
                       {p}
                       <Switch defaultChecked={i !== 5} aria-label={p} />
                     </label>
@@ -174,9 +177,11 @@ function SettingsPage() {
                       <TableCell className="text-sm">{s.durations.join(" / ")} min</TableCell>
                       <TableCell className="text-right">{currency(s.price)}</TableCell>
                       <TableCell>
-                        <StatusChip tone={s.active ? "positive" : "neutral"}>
-                          {s.active ? "Active" : "Hidden"}
-                        </StatusChip>
+                        {s.active ? (
+                          <span className="text-xs text-muted-foreground">Active</span>
+                        ) : (
+                          <StatusChip>Hidden</StatusChip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -199,7 +204,7 @@ function SettingsPage() {
                       <p className="text-sm font-medium">{m.name}</p>
                       <p className="text-xs text-muted-foreground">{m.email}</p>
                     </div>
-                    <StatusChip tone="gold">{roleLabel[m.role]}</StatusChip>
+                    <span className="text-xs text-muted-foreground">{roleLabel[m.role]}</span>
                   </div>
                 ))}
                 <Button variant="outline" onClick={() => toast.success("Invite sent (mock)")}>
@@ -223,7 +228,10 @@ function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {leadStages.map((s, i) => (
-                <div key={s.key} className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm">
+                <div
+                  key={s.key}
+                  className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm"
+                >
                   <span className="grid h-6 w-6 place-items-center rounded-full bg-secondary text-xs">
                     {i + 1}
                   </span>
@@ -238,11 +246,16 @@ function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-1.5">
-                {["VIP", "Monthly member", "Couples", "Athlete", "Gift card buyer", "Lapsed 90d"].map(
-                  (t) => (
-                    <StatusChip key={t}>{t}</StatusChip>
-                  ),
-                )}
+                {[
+                  "VIP",
+                  "Monthly member",
+                  "Couples",
+                  "Athlete",
+                  "Gift card buyer",
+                  "Lapsed 90d",
+                ].map((t) => (
+                  <StatusChip key={t}>{t}</StatusChip>
+                ))}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="new-tag">Add tag</Label>
@@ -262,7 +275,9 @@ function SettingsPage() {
                 <div key={t.id} className="rounded-lg border border-border p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium">{t.name}</p>
-                    <StatusChip>{t.channel.toUpperCase()}</StatusChip>
+                    <span className="text-[11px] font-medium tracking-wide text-muted-foreground">
+                      {t.channel.toUpperCase()}
+                    </span>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{t.body}</p>
                 </div>

@@ -3,12 +3,12 @@ import type { ChipTone } from "@/lib/format";
 import type { ReactNode } from "react";
 
 const toneClass: Record<ChipTone, string> = {
-  neutral: "bg-muted text-muted-foreground border-border",
-  positive: "bg-secondary text-secondary-foreground border-primary/20",
-  warning: "bg-warning/15 text-warning border-warning/30",
-  critical: "bg-destructive/12 text-destructive border-destructive/25",
-  info: "bg-info/12 text-info border-info/25",
-  gold: "bg-gold/18 text-gold-foreground border-gold/35",
+  neutral: "bg-muted/70 text-muted-foreground",
+  positive: "bg-success/10 text-success",
+  warning: "bg-warning/12 text-gold-foreground",
+  critical: "bg-destructive/10 text-destructive",
+  info: "bg-info/10 text-info",
+  gold: "bg-gold/12 text-gold-foreground",
 };
 
 export function StatusChip({
@@ -25,7 +25,7 @@ export function StatusChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap",
         toneClass[tone],
         className,
       )}

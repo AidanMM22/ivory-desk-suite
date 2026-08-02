@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
-import { StatusChip } from "@/components/shared/chips";
 import { appointments, therapists } from "@/lib/mock/data";
 import { clockTime, dateTime, initialsOf } from "@/lib/format";
 
@@ -56,11 +55,9 @@ function TherapistsPage() {
                   <p className="text-xs text-muted-foreground">{t.title}</p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {t.specialties.map((s) => (
-                  <StatusChip key={s}>{s}</StatusChip>
-                ))}
-              </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {t.specialties.join(" · ")}
+              </p>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-center text-xs">

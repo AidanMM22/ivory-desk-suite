@@ -28,7 +28,10 @@ export const Route = createFileRoute("/reviews")({
           "Monitor ratings, review requests, and service recovery for M&M Massage Spa in Tacoma, WA.",
       },
       { property: "og:title", content: "Reviews — M&M Spa CRM" },
-      { property: "og:description", content: "Rating overview, request funnel, and response queue." },
+      {
+        property: "og:description",
+        content: "Rating overview, request funnel, and response queue.",
+      },
     ],
   }),
   component: ReviewsPage,
@@ -43,7 +46,10 @@ function ReviewsPage() {
 
   return (
     <div className="mx-auto max-w-[1300px] space-y-6">
-      <PageHeader title="Reviews" description={`${average} average across ${reviews.length} reviews`} />
+      <PageHeader
+        title="Reviews"
+        description={`${average} average across ${reviews.length} reviews`}
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="surface-soft">
@@ -141,10 +147,12 @@ function ReviewsPage() {
                   <p className="text-sm font-medium">{r.clientName}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <StatusChip>{r.source}</StatusChip>
-                  <StatusChip tone={r.responded ? "positive" : "warning"}>
-                    {r.responded ? "Responded" : "Needs response"}
-                  </StatusChip>
+                  <span className="text-xs text-muted-foreground">{r.source}</span>
+                  {r.responded ? (
+                    <span className="text-xs text-muted-foreground">Responded</span>
+                  ) : (
+                    <StatusChip tone="warning">Needs response</StatusChip>
+                  )}
                   <span className="text-xs text-muted-foreground">{shortDate(r.createdAt)}</span>
                 </div>
               </div>

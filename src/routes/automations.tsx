@@ -31,20 +31,14 @@ export const Route = createFileRoute("/automations")({
           "Automation library for M&M Massage Spa: speed-to-lead, reminders, review requests, no-show recovery, and reactivation workflows.",
       },
       { property: "og:title", content: "Automations — M&M Spa CRM" },
-      { property: "og:description", content: "Workflow library with triggers, waits, and run history." },
+      {
+        property: "og:description",
+        content: "Workflow library with triggers, waits, and run history.",
+      },
     ],
   }),
   component: AutomationsPage,
 });
-
-const stepTone = {
-  trigger: "info",
-  wait: "neutral",
-  condition: "gold",
-  message: "positive",
-  task: "warning",
-  exit: "neutral",
-} as const;
 
 function AutomationsPage() {
   const [rows, setRows] = useState<Automation[]>(seed);
@@ -82,19 +76,27 @@ function AutomationsPage() {
                   aria-label={`Toggle ${a.name}`}
                 />
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex items-center gap-2">
                 <StatusChip
-                  tone={a.status === "active" ? "positive" : a.status === "paused" ? "warning" : "neutral"}
+                  tone={
+                    a.status === "active"
+                      ? "positive"
+                      : a.status === "paused"
+                        ? "warning"
+                        : "neutral"
+                  }
                 >
                   {a.status}
                 </StatusChip>
-                <StatusChip>{a.category}</StatusChip>
+                <span className="text-xs text-muted-foreground">{a.category}</span>
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col justify-between gap-3">
               <p className="text-sm text-muted-foreground">{a.description}</p>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p>Audience {a.audienceSize} · {a.steps.length} steps</p>
+                <p>
+                  Audience {a.audienceSize} · {a.steps.length} steps
+                </p>
                 <p>
                   {a.successMetric.label} {a.successMetric.value} · {a.failureCount} failures
                 </p>
@@ -122,10 +124,7 @@ function AutomationsPage() {
                   <Meta label="Exit criteria" value={detail.exitCriteria} />
                   <Meta label="Audience size" value={String(detail.audienceSize)} />
                   <Meta label="Last run" value={dateTime(detail.lastRunAt)} />
-                  <Meta
-                    label={detail.successMetric.label}
-                    value={detail.successMetric.value}
-                  />
+                  <Meta label={detail.successMetric.label} value={detail.successMetric.value} />
                   <Meta label="Failures" value={String(detail.failureCount)} />
                 </div>
 
@@ -136,7 +135,9 @@ function AutomationsPage() {
                       <li key={`${s.label}-${i}`} className="rounded-lg border border-border p-3">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-medium">{s.label}</p>
-                          <StatusChip tone={stepTone[s.kind]}>{s.kind}</StatusChip>
+                          <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
+                            {s.kind}
+                          </span>
                         </div>
                         {s.detail ? (
                           <p className="mt-1 text-xs text-muted-foreground">{s.detail}</p>
@@ -218,13 +219,21 @@ function AutomationsPage() {
                   {s}
                 </div>
               ))}
-              <Button variant="outline" className="w-full" onClick={() => toast("Step added (mock)")}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => toast("Step added (mock)")}
+              >
                 <Workflow className="mr-2 h-4 w-4" /> Add step
               </Button>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="au-message">Message body</Label>
-              <Textarea id="au-message" rows={3} placeholder="Thanks for visiting M&M Massage Spa…" />
+              <Textarea
+                id="au-message"
+                rows={3}
+                placeholder="Thanks for visiting M&M Massage Spa…"
+              />
             </div>
             <Button
               className="w-full"

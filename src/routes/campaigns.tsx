@@ -29,7 +29,10 @@ export const Route = createFileRoute("/campaigns")({
           "Plan, schedule, and measure SMS and email campaigns for M&M Massage Spa clients in Tacoma, WA.",
       },
       { property: "og:title", content: "Campaigns — M&M Spa CRM" },
-      { property: "og:description", content: "Audience segments, drafts, schedules, and performance." },
+      {
+        property: "og:description",
+        content: "Audience segments, drafts, schedules, and performance.",
+      },
     ],
   }),
   component: CampaignsPage,
@@ -57,14 +60,20 @@ function CampaignsPage() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <CardTitle className="font-display text-base">{c.name}</CardTitle>
                 <StatusChip
-                  tone={c.status === "sent" ? "positive" : c.status === "scheduled" ? "info" : "neutral"}
+                  tone={
+                    c.status === "sent" ? "positive" : c.status === "scheduled" ? "info" : "neutral"
+                  }
                 >
                   {c.status}
                 </StatusChip>
               </div>
               <p className="text-xs text-muted-foreground">
                 {c.channel.toUpperCase()} · {c.segment} · {c.audienceSize} recipients ·{" "}
-                {c.sentAt ? dateTime(c.sentAt) : c.scheduledFor ? dateTime(c.scheduledFor) : "no send date"}
+                {c.sentAt
+                  ? dateTime(c.sentAt)
+                  : c.scheduledFor
+                    ? dateTime(c.scheduledFor)
+                    : "no send date"}
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -105,7 +114,11 @@ function CampaignsPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="cp-body">Message</Label>
-              <Textarea id="cp-body" rows={3} placeholder="Hi {{first_name}}, we saved you a spot…" />
+              <Textarea
+                id="cp-body"
+                rows={3}
+                placeholder="Hi {{first_name}}, we saved you a spot…"
+              />
             </div>
             <Button
               className="w-full"
@@ -123,18 +136,10 @@ function CampaignsPage() {
       <Card className="surface-soft">
         <CardContent className="p-4">
           <SectionTitle>Audience segments</SectionTitle>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {[
-              "All consented clients",
-              "Lapsed 60 days",
-              "Lapsed 90 days",
-              "Deep tissue regulars",
-              "Couples massage buyers",
-              "Gift card recipients",
-            ].map((s) => (
-              <StatusChip key={s}>{s}</StatusChip>
-            ))}
-          </div>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            All consented clients · Lapsed 60 days · Lapsed 90 days · Deep tissue regulars · Couples
+            massage buyers · Gift card recipients
+          </p>
         </CardContent>
       </Card>
     </div>

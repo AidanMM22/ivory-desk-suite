@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState, PageHeader, SectionTitle } from "@/components/shared/page";
-import { ConsentChip, StatusChip } from "@/components/shared/chips";
+import { ConsentChip } from "@/components/shared/chips";
 import {
   clientById,
   conversations as seedConversations,
@@ -37,7 +37,10 @@ export const Route = createFileRoute("/inbox")({
           "Unified SMS and email inbox for M&M Massage Spa in Tacoma with consent status, templates, and internal notes.",
       },
       { property: "og:title", content: "Inbox — M&M Spa CRM" },
-      { property: "og:description", content: "Unified conversations with lead and client context." },
+      {
+        property: "og:description",
+        content: "Unified conversations with lead and client context.",
+      },
     ],
   }),
   component: InboxPage,
@@ -91,7 +94,10 @@ function InboxPage() {
           <ul className="divide-y divide-border">
             {visible.length === 0 ? (
               <li className="p-4">
-                <EmptyState title="Nothing here" description="No conversations match this filter." />
+                <EmptyState
+                  title="Nothing here"
+                  description="No conversations match this filter."
+                />
               </li>
             ) : (
               visible.map((c) => (
@@ -142,8 +148,18 @@ function InboxPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <ConsentChip channel="SMS" state={active.consent.sms} />
-                  <ConsentChip channel="Email" state={active.consent.email} />
+                  {active.consent.sms === "granted" && active.consent.email === "granted" ? (
+                    <span className="text-xs text-muted-foreground">SMS and email allowed</span>
+                  ) : (
+                    <>
+                      {active.consent.sms !== "granted" ? (
+                        <ConsentChip channel="SMS" state={active.consent.sms} />
+                      ) : null}
+                      {active.consent.email !== "granted" ? (
+                        <ConsentChip channel="Email" state={active.consent.email} />
+                      ) : null}
+                    </>
+                  )}
                   <Select
                     value={active.assignedToId ?? "unassigned"}
                     onValueChange={(v) => {
@@ -230,7 +246,9 @@ function InboxPage() {
                   <Button
                     disabled={!draft.trim() || (mode === "reply" && optedOut)}
                     onClick={() => {
-                      toast.success(mode === "reply" ? "Message queued (mock)" : "Internal note saved");
+                      toast.success(
+                        mode === "reply" ? "Message queued (mock)" : "Internal note saved",
+                      );
                       setDraft("");
                     }}
                   >
@@ -262,9 +280,9 @@ function InboxPage() {
                 </div>
                 {active.subjectType === "client" ? (
                   <div className="space-y-2 text-sm">
-                    <StatusChip tone="gold">
-                      LTV ${clientById(active.subjectId)?.lifetimeValue ?? 0}
-                    </StatusChip>
+                    <p className="font-medium">
+                      ${clientById(active.subjectId)?.lifetimeValue ?? 0} lifetime value
+                    </p>
                     <p className="text-muted-foreground">
                       {clientById(active.subjectId)?.visitCount} visits · prefers{" "}
                       {clientById(active.subjectId)?.preferredService}
@@ -272,9 +290,9 @@ function InboxPage() {
                   </div>
                 ) : (
                   <div className="space-y-2 text-sm">
-                    <StatusChip tone="info">
+                    <p className="font-medium">
                       Lead · {leads.find((l) => l.id === active.subjectId)?.source}
-                    </StatusChip>
+                    </p>
                     <p className="text-muted-foreground">
                       Interested in {leads.find((l) => l.id === active.subjectId)?.serviceInterest}
                     </p>

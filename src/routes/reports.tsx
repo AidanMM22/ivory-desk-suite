@@ -15,7 +15,6 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page";
-import { StatusChip } from "@/components/shared/chips";
 import {
   automations,
   bookingsBySource,
@@ -51,7 +50,10 @@ const PIE = ["var(--sage)", "var(--eucalyptus)", "var(--gold)", "var(--muted-for
 function ReportsPage() {
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
-      <PageHeader title="Reports" description="Trailing 6 months · sample data for this practice workspace" />
+      <PageHeader
+        title="Reports"
+        description="Trailing 6 months · sample data for this practice workspace"
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="surface-soft">
@@ -65,7 +67,12 @@ function ReportsPage() {
                 <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={12} />
                 <YAxis stroke="var(--muted-foreground)" fontSize={12} />
                 <Tooltip formatter={(v: number) => currency(v)} />
-                <Line type="monotone" dataKey="revenue" stroke="var(--eucalyptus)" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--eucalyptus)"
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -139,10 +146,9 @@ function ReportsPage() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm"
               >
                 <span className="min-w-0 truncate font-medium">{t.name}</span>
-                <span className="flex flex-wrap gap-1.5">
-                  <StatusChip>{t.weeklyAppointments} appts</StatusChip>
-                  <StatusChip tone="info">Util {percent(t.utilization)}</StatusChip>
-                  <StatusChip tone="positive">Rebook {percent(t.rebookingRate)}</StatusChip>
+                <span className="text-xs text-muted-foreground">
+                  {t.weeklyAppointments} appointments · {percent(t.utilization)} utilized ·{" "}
+                  {percent(t.rebookingRate)} rebooked
                 </span>
               </div>
             ))}
@@ -157,10 +163,8 @@ function ReportsPage() {
             {retentionCohorts.map((c) => (
               <div key={c.cohort} className="flex items-center justify-between gap-2 text-sm">
                 <span>{c.cohort}</span>
-                <span className="flex gap-1.5">
-                  <StatusChip>M1 {percent(c.m1)}</StatusChip>
-                  <StatusChip>M3 {percent(c.m3)}</StatusChip>
-                  <StatusChip>M2 {percent(c.m2)}</StatusChip>
+                <span className="text-xs text-muted-foreground">
+                  M1 {percent(c.m1)} · M2 {percent(c.m2)} · M3 {percent(c.m3)}
                 </span>
               </div>
             ))}
@@ -178,9 +182,7 @@ function ReportsPage() {
                 className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm"
               >
                 <span className="min-w-0 truncate">{a.name}</span>
-                <StatusChip tone={a.failureCount > 2 ? "warning" : "positive"}>
-                  {a.successMetric.value}
-                </StatusChip>
+                <span className="shrink-0 text-sm font-medium">{a.successMetric.value}</span>
               </div>
             ))}
           </CardContent>

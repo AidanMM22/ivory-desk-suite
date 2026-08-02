@@ -58,7 +58,10 @@ export const Route = createFileRoute("/clients")({
           "Client directory and 360 profiles for M&M Massage Spa in Tacoma: lifetime value, visits, preferences, packages, and consent.",
       },
       { property: "og:title", content: "Clients — M&M Spa CRM" },
-      { property: "og:description", content: "Directory and client 360 profiles with consent status." },
+      {
+        property: "og:description",
+        content: "Directory and client 360 profiles with consent status.",
+      },
     ],
   }),
   component: ClientsPage,
@@ -198,12 +201,9 @@ function ClientsPage() {
                         {therapistById(c.preferredTherapistId)?.name ?? "No preference"}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {c.tags.map((t) => (
-                          <StatusChip key={t}>{t}</StatusChip>
-                        ))}
-                      </div>
+                    <TableCell className="max-w-48 text-xs text-muted-foreground">
+                      {c.tags.slice(0, 2).join(", ")}
+                      {c.tags.length > 2 ? ` +${c.tags.length - 2}` : ""}
                     </TableCell>
                     <TableCell>
                       <StatusChip tone={c.rebooked ? "positive" : "warning"}>
@@ -211,10 +211,18 @@ function ClientsPage() {
                       </StatusChip>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <ConsentChip channel="SMS" state={c.consent.sms} />
-                        <ConsentChip channel="Email" state={c.consent.email} />
-                      </div>
+                      {c.consent.sms === "granted" && c.consent.email === "granted" ? (
+                        <span className="text-xs text-muted-foreground">Contactable</span>
+                      ) : (
+                        <div className="flex flex-col items-start gap-1">
+                          {c.consent.sms !== "granted" ? (
+                            <ConsentChip channel="SMS" state={c.consent.sms} />
+                          ) : null}
+                          {c.consent.email !== "granted" ? (
+                            <ConsentChip channel="Email" state={c.consent.email} />
+                          ) : null}
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -293,13 +301,7 @@ function ClientProfile({ client, onClose }: { client: Client | null; onClose: ()
                       value={client.intakeComplete ? "Complete" : "Incomplete"}
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {client.tags.map((t) => (
-                      <StatusChip key={t} tone="gold">
-                        {t}
-                      </StatusChip>
-                    ))}
-                  </div>
+                  <p className="text-sm text-muted-foreground">{client.tags.join(" · ")}</p>
                   <div className="rounded-lg border border-border p-3 text-sm">
                     <SectionTitle>Marketing eligibility</SectionTitle>
                     <p className="mt-2 text-muted-foreground">
@@ -321,7 +323,10 @@ function ClientProfile({ client, onClose }: { client: Client | null; onClose: ()
 
                 <TabsContent value="history" className="pt-4">
                   {history.length === 0 ? (
-                    <EmptyState title="No appointment history" description="Book a first visit to start the record." />
+                    <EmptyState
+                      title="No appointment history"
+                      description="Book a first visit to start the record."
+                    />
                   ) : (
                     <div className="space-y-2">
                       {history.map((a) => (
@@ -411,15 +416,20 @@ function ClientProfile({ client, onClose }: { client: Client | null; onClose: ()
                   </div>
                   {can("clients.allNotes") ? (
                     <RestrictedNotice>
-                      Treatment / intake note (restricted, non-medical mock): {client.restrictedNote}
+                      Treatment / intake note (restricted, non-medical mock):{" "}
+                      {client.restrictedNote}
                     </RestrictedNotice>
                   ) : (
                     <RestrictedNotice>
-                      Restricted intake notes are not visible in the {role === "therapist" ? "Therapist" : "current"} role
-                      preview.
+                      Restricted intake notes are not visible in the{" "}
+                      {role === "therapist" ? "Therapist" : "current"} role preview.
                     </RestrictedNotice>
                   )}
-                  <Textarea aria-label="Add internal note" rows={3} placeholder="Add an internal note…" />
+                  <Textarea
+                    aria-label="Add internal note"
+                    rows={3}
+                    placeholder="Add an internal note…"
+                  />
                   <Button size="sm" onClick={() => toast.success("Note saved")}>
                     Save note
                   </Button>

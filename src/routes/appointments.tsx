@@ -61,7 +61,10 @@ export const Route = createFileRoute("/appointments")({
           "Day, week, month, and list views of massage appointments at M&M Massage Spa in Tacoma, with therapist and room filters.",
       },
       { property: "og:title", content: "Appointments — M&M Spa CRM" },
-      { property: "og:description", content: "Calendar and list views with reminder and deposit status." },
+      {
+        property: "og:description",
+        content: "Calendar and list views with reminder and deposit status.",
+      },
     ],
   }),
   component: AppointmentsPage,
@@ -69,13 +72,6 @@ export const Route = createFileRoute("/appointments")({
 
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 const rooms = locations[0]!.rooms;
-
-const reminderTone = {
-  sent: "positive",
-  scheduled: "info",
-  failed: "critical",
-  not_scheduled: "warning",
-} as const;
 
 function AppointmentsPage() {
   const [view, setView] = useState("day");
@@ -179,7 +175,9 @@ function AppointmentsPage() {
                 <div
                   key={hour}
                   className="grid gap-2 border-b border-border/60 py-2"
-                  style={{ gridTemplateColumns: `120px repeat(${therapists.length}, minmax(0,1fr))` }}
+                  style={{
+                    gridTemplateColumns: `120px repeat(${therapists.length}, minmax(0,1fr))`,
+                  }}
                 >
                   <span className="text-xs text-muted-foreground">
                     {hour % 12 === 0 ? 12 : hour % 12}:00{hour >= 12 ? "p" : "a"}
@@ -204,8 +202,8 @@ function AppointmentsPage() {
                                 {slot.clientName}
                               </span>
                               <span className="block truncate text-xs text-muted-foreground">
-                                {clockTime(slot.start)}–{addMinutesLabel(slot.start, slot.duration)} ·{" "}
-                                {serviceByKey(slot.serviceKey).name}
+                                {clockTime(slot.start)}–{addMinutesLabel(slot.start, slot.duration)}{" "}
+                                · {serviceByKey(slot.serviceKey).name}
                               </span>
                             </span>
                           </button>
@@ -340,7 +338,9 @@ function AppointmentsPage() {
                       <TableCell className="text-sm">
                         {serviceByKey(a.serviceKey).name} · {a.duration}m
                       </TableCell>
-                      <TableCell className="text-sm">{therapistById(a.therapistId)?.name}</TableCell>
+                      <TableCell className="text-sm">
+                        {therapistById(a.therapistId)?.name}
+                      </TableCell>
                       <TableCell className="text-sm">
                         {rooms.find((r) => r.id === a.roomId)?.name}
                       </TableCell>
@@ -350,22 +350,28 @@ function AppointmentsPage() {
                         </StatusChip>
                       </TableCell>
                       <TableCell>
-                        <StatusChip tone={reminderTone[a.reminder]}>
+                        <span
+                          className={
+                            a.reminder === "failed"
+                              ? "text-xs font-medium text-destructive"
+                              : "text-xs text-muted-foreground"
+                          }
+                        >
                           {a.reminder.replace("_", " ")}
-                        </StatusChip>
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <StatusChip
-                          tone={
+                        <span
+                          className={
                             a.deposit === "paid"
-                              ? "positive"
+                              ? "text-xs text-muted-foreground"
                               : a.deposit === "unpaid"
-                                ? "warning"
-                                : "neutral"
+                                ? "text-xs font-medium text-gold-foreground"
+                                : "text-xs text-muted-foreground"
                           }
                         >
                           {a.deposit.replace("_", " ")}
-                        </StatusChip>
+                        </span>
                       </TableCell>
                       <TableCell className="text-right text-sm">{currency(a.price)}</TableCell>
                     </TableRow>
@@ -451,7 +457,9 @@ function AppointmentsPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setStatus(detail, "no_show", "Marked as no-show — recovery queued")}
+                    onClick={() =>
+                      setStatus(detail, "no_show", "Marked as no-show — recovery queued")
+                    }
                   >
                     Mark no-show
                   </Button>
