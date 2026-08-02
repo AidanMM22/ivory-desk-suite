@@ -12,10 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as AutomationsRouteImport } from './routes/automations'
+import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TherapistsRouteImport } from './routes/therapists'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +34,11 @@ const AppointmentsRoute = AppointmentsRouteImport.update({
 const AutomationsRoute = AutomationsRouteImport.update({
   id: '/automations',
   path: '/automations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampaignsRoute = CampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientsRoute = ClientsRouteImport.update({
@@ -47,9 +56,24 @@ const LeadsRoute = LeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TherapistsRoute = TherapistsRouteImport.update({
+  id: '/therapists',
+  path: '/therapists',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -57,29 +81,41 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
   '/automations': typeof AutomationsRoute
+  '/campaigns': typeof CampaignsRoute
   '/clients': typeof ClientsRoute
   '/inbox': typeof InboxRoute
   '/leads': typeof LeadsRoute
+  '/reports': typeof ReportsRoute
+  '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
+  '/therapists': typeof TherapistsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
   '/automations': typeof AutomationsRoute
+  '/campaigns': typeof CampaignsRoute
   '/clients': typeof ClientsRoute
   '/inbox': typeof InboxRoute
   '/leads': typeof LeadsRoute
+  '/reports': typeof ReportsRoute
+  '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
+  '/therapists': typeof TherapistsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
   '/automations': typeof AutomationsRoute
+  '/campaigns': typeof CampaignsRoute
   '/clients': typeof ClientsRoute
   '/inbox': typeof InboxRoute
   '/leads': typeof LeadsRoute
+  '/reports': typeof ReportsRoute
+  '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
+  '/therapists': typeof TherapistsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,38 +123,54 @@ export interface FileRouteTypes {
     | '/'
     | '/appointments'
     | '/automations'
+    | '/campaigns'
     | '/clients'
     | '/inbox'
     | '/leads'
+    | '/reports'
+    | '/reviews'
     | '/settings'
+    | '/therapists'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/appointments'
     | '/automations'
+    | '/campaigns'
     | '/clients'
     | '/inbox'
     | '/leads'
+    | '/reports'
+    | '/reviews'
     | '/settings'
+    | '/therapists'
   id:
     | '__root__'
     | '/'
     | '/appointments'
     | '/automations'
+    | '/campaigns'
     | '/clients'
     | '/inbox'
     | '/leads'
+    | '/reports'
+    | '/reviews'
     | '/settings'
+    | '/therapists'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppointmentsRoute: typeof AppointmentsRoute
   AutomationsRoute: typeof AutomationsRoute
+  CampaignsRoute: typeof CampaignsRoute
   ClientsRoute: typeof ClientsRoute
   InboxRoute: typeof InboxRoute
   LeadsRoute: typeof LeadsRoute
+  ReportsRoute: typeof ReportsRoute
+  ReviewsRoute: typeof ReviewsRoute
   SettingsRoute: typeof SettingsRoute
+  TherapistsRoute: typeof TherapistsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -144,6 +196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AutomationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campaigns': {
+      id: '/campaigns'
+      path: '/campaigns'
+      fullPath: '/campaigns'
+      preLoaderRoute: typeof CampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients': {
       id: '/clients'
       path: '/clients'
@@ -165,11 +224,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/therapists': {
+      id: '/therapists'
+      path: '/therapists'
+      fullPath: '/therapists'
+      preLoaderRoute: typeof TherapistsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -179,10 +259,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppointmentsRoute: AppointmentsRoute,
   AutomationsRoute: AutomationsRoute,
+  CampaignsRoute: CampaignsRoute,
   ClientsRoute: ClientsRoute,
   InboxRoute: InboxRoute,
   LeadsRoute: LeadsRoute,
+  ReportsRoute: ReportsRoute,
+  ReviewsRoute: ReviewsRoute,
   SettingsRoute: SettingsRoute,
+  TherapistsRoute: TherapistsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
