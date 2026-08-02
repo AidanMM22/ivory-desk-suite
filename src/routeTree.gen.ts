@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
+import { Route as AutomationsRouteImport } from './routes/automations'
 import { Route as ClientsRouteImport } from './routes/clients'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as SettingsRouteImport } from './routes/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,9 +27,19 @@ const AppointmentsRoute = AppointmentsRouteImport.update({
   path: '/appointments',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutomationsRoute = AutomationsRouteImport.update({
+  id: '/automations',
+  path: '/automations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsRoute = ClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeadsRoute = LeadsRouteImport.update({
@@ -34,39 +47,78 @@ const LeadsRoute = LeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
+  '/automations': typeof AutomationsRoute
   '/clients': typeof ClientsRoute
+  '/inbox': typeof InboxRoute
   '/leads': typeof LeadsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
+  '/automations': typeof AutomationsRoute
   '/clients': typeof ClientsRoute
+  '/inbox': typeof InboxRoute
   '/leads': typeof LeadsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
+  '/automations': typeof AutomationsRoute
   '/clients': typeof ClientsRoute
+  '/inbox': typeof InboxRoute
   '/leads': typeof LeadsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/appointments' | '/clients' | '/leads'
+  fullPaths:
+    | '/'
+    | '/appointments'
+    | '/automations'
+    | '/clients'
+    | '/inbox'
+    | '/leads'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/appointments' | '/clients' | '/leads'
-  id: '__root__' | '/' | '/appointments' | '/clients' | '/leads'
+  to:
+    | '/'
+    | '/appointments'
+    | '/automations'
+    | '/clients'
+    | '/inbox'
+    | '/leads'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/appointments'
+    | '/automations'
+    | '/clients'
+    | '/inbox'
+    | '/leads'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppointmentsRoute: typeof AppointmentsRoute
+  AutomationsRoute: typeof AutomationsRoute
   ClientsRoute: typeof ClientsRoute
+  InboxRoute: typeof InboxRoute
   LeadsRoute: typeof LeadsRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,11 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppointmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/automations': {
+      id: '/automations'
+      path: '/automations'
+      fullPath: '/automations'
+      preLoaderRoute: typeof AutomationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients': {
       id: '/clients'
       path: '/clients'
       fullPath: '/clients'
       preLoaderRoute: typeof ClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leads': {
@@ -99,14 +165,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppointmentsRoute: AppointmentsRoute,
+  AutomationsRoute: AutomationsRoute,
   ClientsRoute: ClientsRoute,
+  InboxRoute: InboxRoute,
   LeadsRoute: LeadsRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
