@@ -175,7 +175,6 @@ function ClientsPage() {
                   <TableHead>Next visit</TableHead>
                   <TableHead>Preferred</TableHead>
                   <TableHead>Tags</TableHead>
-                  <TableHead>Rebooked</TableHead>
                   <TableHead>Consent</TableHead>
                 </TableRow>
               </TableHeader>
@@ -212,11 +211,6 @@ function ClientsPage() {
                     <TableCell className="max-w-48 text-xs text-muted-foreground">
                       {c.tags.slice(0, 2).join(", ")}
                       {c.tags.length > 2 ? ` +${c.tags.length - 2}` : ""}
-                    </TableCell>
-                    <TableCell>
-                      <StatusChip tone={c.rebooked ? "positive" : "warning"}>
-                        {c.rebooked ? "Rebooked" : "Needs rebooking"}
-                      </StatusChip>
                     </TableCell>
                     <TableCell>
                       {c.consent.sms === "granted" && c.consent.email === "granted" ? (
