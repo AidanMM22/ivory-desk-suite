@@ -251,13 +251,22 @@ function ServicesPage() {
               />
             </Field>
             <Field label="Price">
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={draft.price}
-                onChange={(event) => setDraft({ ...draft, price: event.target.value })}
-              />
+              <div className="relative">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
+                >
+                  $
+                </span>
+                <Input
+                  className="pl-7"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.price}
+                  onChange={(event) => setDraft({ ...draft, price: event.target.value })}
+                />
+              </div>
             </Field>
             <Field label="Service durations">
               <Input

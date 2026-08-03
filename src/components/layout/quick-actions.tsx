@@ -876,17 +876,26 @@ export function QuickActionDialogs() {
               />
             </Field>
             <Field label="Starting price">
-              <Input
-                id="service-price"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="95"
-                value={serviceDraft.price}
-                onChange={(event) =>
-                  setServiceDraft({ ...serviceDraft, price: event.target.value })
-                }
-              />
+              <div className="relative">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
+                >
+                  $
+                </span>
+                <Input
+                  id="service-price"
+                  className="pl-7"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="95"
+                  value={serviceDraft.price}
+                  onChange={(event) =>
+                    setServiceDraft({ ...serviceDraft, price: event.target.value })
+                  }
+                />
+              </div>
             </Field>
             <Field label="Cleanup / buffer">
               <Input
