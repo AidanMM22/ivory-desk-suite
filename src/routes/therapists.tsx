@@ -1,8 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Pencil, Trash2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -10,19 +38,68 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { TherapistAvailabilityEditor } from "@/components/layout/quick-actions";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
-import { appointments, serviceByKey, therapists } from "@/lib/data";
+import { appointments, locations, serviceByKey, services, therapists } from "@/lib/data";
+import { useCrmData } from "@/lib/crm-data";
 import { clockTime, dateTime, initialsOf } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 
 const percent = (n: number) => `${Math.round(n * (n <= 1 ? 100 : 1))}%`;
-import type { Therapist } from "@/lib/types";
+import type { DayAvailability, ServiceKey, Therapist, Weekday } from "@/lib/types";
 
 const scheduleTime = (value: string) => {
   const [hours, minutes] = value.split(":").map(Number);
   const period = (hours ?? 0) >= 12 ? "PM" : "AM";
   return `${(hours ?? 0) % 12 || 12}:${String(minutes ?? 0).padStart(2, "0")} ${period}`;
 };
+
+const WEEKDAYS: Weekday[] = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+interface TherapistDraft {
+  name: string;
+  title: string;
+  serviceKey: ServiceKey;
+  licensedSince: string;
+  locationId: string;
+  active: boolean;
+  weeklyAvailability: DayAvailability[];
+}
+
+const therapistDraft = (therapist: Therapist): TherapistDraft => ({
+  name: therapist.name,
+  title: therapist.title,
+  serviceKey: therapist.specialties[0] ?? "unspecified",
+  licensedSince: String(therapist.licensedSince),
+  locationId: therapist.locationId,
+  active: therapist.active,
+  weeklyAvailability:
+    therapist.weeklyAvailability?.map((day) => ({ ...day })) ??
+    WEEKDAYS.map((day) => ({ day, unavailable: false, start: "09:00", end: "17:00" })),
+});
+
+const availabilitySummary = (schedule: DayAvailability[]) => {
+  const available = schedule.filter((day) => !day.unavailable);
+  if (available.length === 0) return "No weekly availability";
+  const sameHours = available.every(
+    (day) => day.start === available[0]?.start && day.end === available[0]?.end,
+  );
+  return sameHours
+    ? `${available.length} days · ${scheduleTime(available[0]!.start)}–${scheduleTime(available[0]!.end)}`
+    : `${available.length} days with custom hours`;
+};
+
+const invalidAvailability = (schedule: DayAvailability[]) =>
+  schedule.some((day) => !day.unavailable && day.start >= day.end);
 
 export const Route = createFileRoute("/therapists")({
   head: () => ({
@@ -42,7 +119,19 @@ export const Route = createFileRoute("/therapists")({
 
 function TherapistsPage() {
   const { setQuickAction } = useWorkspace();
+  const { persistRecord, removeRecord } = useCrmData();
   const [detail, setDetail] = useState<Therapist | null>(null);
+  const [editing, setEditing] = useState<Therapist | null>(null);
+  const [draft, setDraft] = useState<TherapistDraft | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openEditor = (therapist: Therapist) => {
+    setDetail(null);
+    setEditing(therapist);
+    setDraft(therapistDraft(therapist));
+  };
 
   return (
     <div className="mx-auto max-w-[1300px] space-y-6">
@@ -67,7 +156,10 @@ function TherapistsPage() {
                 </span>
                 <div className="min-w-0">
                   <CardTitle className="font-display truncate text-base">{t.name}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{t.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.title}
+                    {!t.active ? " · Inactive" : ""}
+                  </p>
                 </div>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
@@ -85,9 +177,15 @@ function TherapistsPage() {
               <p className="text-xs text-muted-foreground">
                 {t.weeklyAppointments} appointments this week · {t.availability}
               </p>
-              <Button variant="outline" className="w-full" onClick={() => setDetail(t)}>
-                View profile
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => setDetail(t)}>
+                  View profile
+                </Button>
+                <Button variant="outline" onClick={() => openEditor(t)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -104,6 +202,10 @@ function TherapistsPage() {
                 </SheetDescription>
               </SheetHeader>
               <div className="space-y-4 px-4 pb-10">
+                <Button variant="outline" className="w-full" onClick={() => openEditor(detail)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit therapist
+                </Button>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <Stat label="Utilization" value={percent(detail.utilization)} />
                   <Stat label="Rebooking" value={percent(detail.rebookingRate)} />
@@ -152,6 +254,216 @@ function TherapistsPage() {
           ) : null}
         </SheetContent>
       </Sheet>
+
+      <Dialog
+        open={!!editing}
+        onOpenChange={(open) => {
+          if (!open && !saving) {
+            setEditing(null);
+            setDraft(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Edit therapist</DialogTitle>
+            <DialogDescription>
+              Update profile, scheduling, location, and availability.
+            </DialogDescription>
+          </DialogHeader>
+          {editing && draft ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Full name">
+                <Input
+                  id="edit-therapist-name"
+                  value={draft.name}
+                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                />
+              </Field>
+              <Field label="Title">
+                <Input
+                  id="edit-therapist-title"
+                  value={draft.title}
+                  onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+                />
+              </Field>
+              <Field label="Primary service">
+                <Select
+                  value={draft.serviceKey}
+                  onValueChange={(serviceKey) => setDraft({ ...draft, serviceKey })}
+                >
+                  <SelectTrigger id="edit-therapist-service">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unspecified">Not specified</SelectItem>
+                    {services.map((service) => (
+                      <SelectItem key={service.key} value={service.key}>
+                        {service.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Licensed since">
+                <Input
+                  id="edit-licensed-since"
+                  type="number"
+                  min="1900"
+                  max={new Date().getFullYear()}
+                  value={draft.licensedSince}
+                  onChange={(event) => setDraft({ ...draft, licensedSince: event.target.value })}
+                />
+              </Field>
+              {locations.length > 0 ? (
+                <Field label="Location">
+                  <Select
+                    value={draft.locationId || locations[0]?.id || ""}
+                    onValueChange={(locationId) => setDraft({ ...draft, locationId })}
+                  >
+                    <SelectTrigger id="edit-therapist-location">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              ) : null}
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+                <div>
+                  <Label htmlFor="edit-therapist-active">Active</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Available for scheduling and assignment
+                  </p>
+                </div>
+                <Switch
+                  id="edit-therapist-active"
+                  checked={draft.active}
+                  onCheckedChange={(active) => setDraft({ ...draft, active })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <TherapistAvailabilityEditor
+                  value={draft.weeklyAvailability}
+                  onChange={(weeklyAvailability) => setDraft({ ...draft, weeklyAvailability })}
+                />
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter className="sm:justify-between">
+            <Button variant="destructive" disabled={saving} onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                disabled={saving}
+                onClick={() => {
+                  setEditing(null);
+                  setDraft(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={
+                  saving ||
+                  !editing ||
+                  !draft ||
+                  !draft.name.trim() ||
+                  !draft.title.trim() ||
+                  !draft.licensedSince ||
+                  invalidAvailability(draft.weeklyAvailability)
+                }
+                onClick={() => {
+                  if (!editing || !draft) return;
+                  const updated: Therapist = {
+                    ...editing,
+                    name: draft.name.trim(),
+                    title: draft.title.trim(),
+                    initials: initialsOf(draft.name),
+                    specialties: draft.serviceKey === "unspecified" ? [] : [draft.serviceKey],
+                    licensedSince: Number(draft.licensedSince),
+                    locationId: draft.locationId || locations[0]?.id || "",
+                    active: draft.active,
+                    availability: availabilitySummary(draft.weeklyAvailability),
+                    weeklyAvailability: draft.weeklyAvailability,
+                  };
+                  setSaving(true);
+                  void persistRecord("therapists", updated, updated.locationId)
+                    .then(() => {
+                      toast.success("Therapist updated");
+                      setEditing(null);
+                      setDraft(null);
+                    })
+                    .catch((error: unknown) =>
+                      toast.error(
+                        error instanceof Error ? error.message : "Could not update the therapist.",
+                      ),
+                    )
+                    .finally(() => setSaving(false));
+                }}
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {editing?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the therapist profile. Existing appointment history will
+              remain, but the therapist will no longer be available for scheduling.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting || !editing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                if (!editing) return;
+                setDeleting(true);
+                void removeRecord("therapists", editing.id)
+                  .then(() => {
+                    toast.success("Therapist deleted");
+                    setDeleteOpen(false);
+                    setEditing(null);
+                    setDraft(null);
+                  })
+                  .catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error ? error.message : "Could not delete the therapist.",
+                    ),
+                  )
+                  .finally(() => setDeleting(false));
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete therapist"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
     </div>
   );
 }

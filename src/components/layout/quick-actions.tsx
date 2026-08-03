@@ -153,7 +153,7 @@ const availabilitySummary = (schedule: DayAvailability[]) => {
 const hasInvalidAvailability = (schedule: DayAvailability[]) =>
   schedule.some((day) => !day.unavailable && day.start >= day.end);
 
-function TherapistAvailabilityEditor({
+export function TherapistAvailabilityEditor({
   value,
   onChange,
 }: {
