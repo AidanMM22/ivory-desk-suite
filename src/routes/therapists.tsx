@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -10,8 +11,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
-import { appointments, therapists } from "@/lib/data";
+import { appointments, serviceByKey, therapists } from "@/lib/data";
 import { clockTime, dateTime, initialsOf } from "@/lib/format";
+import { useWorkspace } from "@/lib/workspace";
 
 const percent = (n: number) => `${Math.round(n * (n <= 1 ? 100 : 1))}%`;
 import type { Therapist } from "@/lib/types";
@@ -33,6 +35,7 @@ export const Route = createFileRoute("/therapists")({
 });
 
 function TherapistsPage() {
+  const { setQuickAction } = useWorkspace();
   const [detail, setDetail] = useState<Therapist | null>(null);
 
   return (
@@ -40,6 +43,12 @@ function TherapistsPage() {
       <PageHeader
         title="Therapists"
         description={`${therapists.length} licensed therapists · Tacoma, WA`}
+        actions={
+          <Button onClick={() => setQuickAction("therapist")}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add therapist
+          </Button>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -56,7 +65,9 @@ function TherapistsPage() {
                 </div>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                {t.specialties.join(" · ")}
+                {t.specialties.length
+                  ? t.specialties.map((specialty) => serviceByKey(specialty).name).join(" · ")
+                  : "No specialties added"}
               </p>
             </CardHeader>
             <CardContent className="space-y-3">

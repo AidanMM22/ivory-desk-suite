@@ -9,6 +9,7 @@ import {
   LogOut,
   Megaphone,
   MessageSquarePlus,
+  Plus,
   Search,
   Settings,
   Sparkles,
@@ -231,10 +232,25 @@ function QuickActionMenu() {
           <span className="hidden sm:inline">Quick actions</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel>Add to CRM</DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => setQuickAction("lead")}>
           <UserPlus className="mr-2 h-4 w-4" /> Add lead
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setQuickAction("client")}>
+          <Users className="mr-2 h-4 w-4" /> Add client
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setQuickAction("therapist")}>
+          <UsersRound className="mr-2 h-4 w-4" /> Add therapist
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setQuickAction("room")}>
+          <Plus className="mr-2 h-4 w-4" /> Add room
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setQuickAction("service")}>
+          <Plus className="mr-2 h-4 w-4" /> Add service
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Work</DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => setQuickAction("appointment")}>
           <CalendarDays className="mr-2 h-4 w-4" /> Book appointment
         </DropdownMenuItem>

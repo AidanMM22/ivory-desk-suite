@@ -55,7 +55,7 @@ export const serviceByKey = (key: ServiceKey): Service =>
   services.find((service) => service.key === key) ?? {
     id: `missing-${key}`,
     key,
-    name: "Service unavailable",
+    name: key === "unspecified" ? "Not specified" : "Service unavailable",
     durations: [],
     price: 0,
     description: "",

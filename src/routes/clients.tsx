@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CalendarPlus, MessageSquare, Search, Users } from "lucide-react";
+import { CalendarPlus, MessageSquare, Search, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -106,9 +106,14 @@ function ClientsPage() {
         title="Clients"
         description={`${seedClients.length} clients · average lifetime value ${currency(averageLifetimeValue)}`}
         actions={
-          <Button onClick={() => setQuickAction("appointment")}>
-            <CalendarPlus className="mr-2 h-4 w-4" /> Book appointment
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setQuickAction("client")}>
+              <UserPlus className="mr-2 h-4 w-4" /> Add client
+            </Button>
+            <Button onClick={() => setQuickAction("appointment")}>
+              <CalendarPlus className="mr-2 h-4 w-4" /> Book appointment
+            </Button>
+          </>
         }
       />
 

@@ -55,6 +55,25 @@ export function CommandPalette() {
           >
             Book appointment
           </CommandItem>
+          {(
+            [
+              ["client", "Add client"],
+              ["therapist", "Add therapist"],
+              ["room", "Add room"],
+              ["service", "Add service"],
+            ] as const
+          ).map(([action, label]) => (
+            <CommandItem
+              key={action}
+              value={label.toLowerCase()}
+              onSelect={() => {
+                setPaletteOpen(false);
+                setQuickAction(action);
+              }}
+            >
+              {label}
+            </CommandItem>
+          ))}
           <CommandItem
             value="send message"
             onSelect={() => {

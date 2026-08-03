@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Lock } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ const integrations = [
 ];
 
 function SettingsPage() {
-  const { can, role } = useWorkspace();
+  const { can, role, setQuickAction } = useWorkspace();
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
@@ -102,7 +102,13 @@ function SettingsPage() {
               </Card>
               <Card className="surface-soft">
                 <CardHeader>
-                  <CardTitle className="font-display text-lg">Locations &amp; rooms</CardTitle>
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="font-display text-lg">Locations &amp; rooms</CardTitle>
+                    <Button size="sm" variant="outline" onClick={() => setQuickAction("room")}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add room
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {locations.map((l) => (
@@ -155,6 +161,13 @@ function SettingsPage() {
 
         <TabsContent value="services" className="pt-4">
           <Card className="surface-soft overflow-hidden">
+            <CardHeader className="flex-row items-center justify-between gap-3">
+              <CardTitle className="font-display text-lg">Services</CardTitle>
+              <Button size="sm" onClick={() => setQuickAction("service")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add service
+              </Button>
+            </CardHeader>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>

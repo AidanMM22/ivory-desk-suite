@@ -18,8 +18,7 @@ export interface Consent {
   updatedAt: string;
 }
 
-export type ServiceKey =
-  "unspecified" | "swedish" | "deep-tissue" | "couples" | "hot-stone" | "prenatal";
+export type ServiceKey = string;
 
 export interface Service {
   id: ID;

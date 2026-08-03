@@ -5,7 +5,8 @@ import { useCrmData } from "./crm-data";
 import { notifications as seedNotifications, tasks as seedTasks, locations } from "./data";
 import type { NotificationItem, Role, Task } from "./types";
 
-export type QuickAction = "lead" | "appointment" | "message" | "task" | null;
+export type QuickAction =
+  "lead" | "client" | "therapist" | "room" | "service" | "appointment" | "message" | "task" | null;
 
 interface WorkspaceValue {
   role: Role;
