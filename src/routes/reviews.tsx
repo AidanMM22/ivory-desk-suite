@@ -13,10 +13,10 @@ import { useCrmData } from "@/lib/crm-data";
 import type { Review } from "@/lib/types";
 
 const reviewFunnel: { label: string; value: number }[] = [
-  { label: "Requests sent", value: 186 },
-  { label: "Opened", value: 141 },
-  { label: "Clicked through", value: 78 },
-  { label: "Reviews left", value: 52 },
+  { label: "Requests sent", value: 0 },
+  { label: "Opened", value: 0 },
+  { label: "Clicked through", value: 0 },
+  { label: "Reviews left", value: 0 },
 ];
 import { shortDate } from "@/lib/format";
 
@@ -45,14 +45,17 @@ function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>(seedReviews);
   const [reply, setReply] = useState<Record<string, string>>({});
   const visible = reviews.filter((r) => source === "all" || r.source === source);
-  const average = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+  const average =
+    reviews.length > 0
+      ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
+      : null;
   const recovery = reviews.filter((r) => r.rating <= 3);
 
   return (
     <div className="mx-auto max-w-[1300px] space-y-6">
       <PageHeader
         title="Reviews"
-        description={`${average} average across ${reviews.length} reviews`}
+        description={average ? `${average} average across ${reviews.length} reviews` : "0 Reviews"}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -61,7 +64,7 @@ function ReviewsPage() {
             <CardTitle className="font-display text-lg">Rating overview</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="font-display text-4xl">{average}</p>
+            <p className="font-display text-4xl">{average ?? "0 Reviews"}</p>
             {[5, 4, 3, 2, 1].map((n) => {
               const count = reviews.filter((r) => Math.round(r.rating) === n).length;
               return (
@@ -70,7 +73,9 @@ function ReviewsPage() {
                   <span className="h-2 flex-1 rounded-full bg-secondary">
                     <span
                       className="block h-2 rounded-full bg-gold"
-                      style={{ width: `${(count / reviews.length) * 100}%` }}
+                      style={{
+                        width: `${reviews.length > 0 ? (count / reviews.length) * 100 : 0}%`,
+                      }}
                     />
                   </span>
                   <span className="w-6 text-right text-muted-foreground">{count}</span>
