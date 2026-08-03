@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,12 +26,14 @@ import { useCrmData } from "@/lib/crm-data";
 import { useAuth } from "@/lib/auth";
 import type {
   Client,
+  DayAvailability,
   Lead,
   LeadSource,
   Location,
   Service,
   ServiceKey,
   Therapist,
+  Weekday,
 } from "@/lib/types";
 
 interface LeadDraft {
@@ -65,7 +68,7 @@ interface TherapistDraft {
   name: string;
   title: string;
   serviceKey: ServiceKey;
-  availability: string;
+  weeklyAvailability: DayAvailability[];
   licensedSince: string;
   locationId: string;
 }
@@ -94,14 +97,191 @@ const emptyClient: ClientDraft = {
   locationId: "",
 };
 
-const emptyTherapist: TherapistDraft = {
+const WEEKDAYS: Weekday[] = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+const createWeeklyAvailability = (): DayAvailability[] =>
+  WEEKDAYS.map((day) => ({
+    day,
+    unavailable: false,
+    start: "09:00",
+    end: "17:00",
+  }));
+
+const createEmptyTherapist = (): TherapistDraft => ({
   name: "",
   title: "Massage therapist",
   serviceKey: "unspecified",
-  availability: "",
+  weeklyAvailability: createWeeklyAvailability(),
   licensedSince: String(new Date().getFullYear()),
   locationId: "",
+});
+
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const hours = Math.floor(index / 2);
+  const minutes = index % 2 === 0 ? "00" : "30";
+  return `${String(hours).padStart(2, "0")}:${minutes}`;
+});
+
+const timeLabel = (value: string) => {
+  const [hours, minutes] = value.split(":").map(Number);
+  const period = (hours ?? 0) >= 12 ? "PM" : "AM";
+  const displayHour = (hours ?? 0) % 12 || 12;
+  return `${displayHour}:${String(minutes ?? 0).padStart(2, "0")} ${period}`;
 };
+
+const availabilitySummary = (schedule: DayAvailability[]) => {
+  const available = schedule.filter((day) => !day.unavailable);
+  if (available.length === 0) return "No weekly availability";
+
+  const sameHours = available.every(
+    (day) => day.start === available[0]?.start && day.end === available[0]?.end,
+  );
+  if (sameHours) {
+    return `${available.length} days · ${timeLabel(available[0]!.start)}–${timeLabel(available[0]!.end)}`;
+  }
+  return `${available.length} days with custom hours`;
+};
+
+const hasInvalidAvailability = (schedule: DayAvailability[]) =>
+  schedule.some((day) => !day.unavailable && day.start >= day.end);
+
+function TherapistAvailabilityEditor({
+  value,
+  onChange,
+}: {
+  value: DayAvailability[];
+  onChange: (value: DayAvailability[]) => void;
+}) {
+  const [bulkStart, setBulkStart] = useState("09:00");
+  const [bulkEnd, setBulkEnd] = useState("17:00");
+
+  const updateDay = (day: Weekday, update: Partial<DayAvailability>) => {
+    onChange(value.map((entry) => (entry.day === day ? { ...entry, ...update } : entry)));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>Weekly availability</Label>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Set shared hours, then adjust individual days as needed.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/30 p-3">
+        <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <Field label="Start for available days">
+            <TimeSelect
+              ariaLabel="Start time for all available days"
+              value={bulkStart}
+              onChange={setBulkStart}
+            />
+          </Field>
+          <Field label="End for available days">
+            <TimeSelect
+              ariaLabel="End time for all available days"
+              value={bulkEnd}
+              onChange={setBulkEnd}
+            />
+          </Field>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={bulkStart >= bulkEnd}
+            onClick={() =>
+              onChange(
+                value.map((day) =>
+                  day.unavailable ? day : { ...day, start: bulkStart, end: bulkEnd },
+                ),
+              )
+            }
+          >
+            Apply to available
+          </Button>
+        </div>
+        {bulkStart >= bulkEnd ? (
+          <p className="mt-2 text-xs text-destructive">End time must be after start time.</p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
+        {value.map((day) => (
+          <div
+            key={day.day}
+            className={`grid gap-3 rounded-lg border border-border p-3 transition-colors sm:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center ${
+              day.unavailable ? "bg-muted/60 text-muted-foreground" : "bg-background"
+            }`}
+          >
+            <span className="text-sm font-medium">{day.day}</span>
+            <TimeSelect
+              ariaLabel={`${day.day} start time`}
+              value={day.start}
+              onChange={(start) => updateDay(day.day, { start })}
+              disabled={day.unavailable}
+            />
+            <TimeSelect
+              ariaLabel={`${day.day} end time`}
+              value={day.end}
+              onChange={(end) => updateDay(day.day, { end })}
+              disabled={day.unavailable}
+            />
+            <label
+              htmlFor={`unavailable-${day.day}`}
+              className="flex cursor-pointer items-center gap-2 text-xs whitespace-nowrap"
+            >
+              <Checkbox
+                id={`unavailable-${day.day}`}
+                checked={day.unavailable}
+                onCheckedChange={(checked) => updateDay(day.day, { unavailable: checked === true })}
+              />
+              No availability
+            </label>
+            {!day.unavailable && day.start >= day.end ? (
+              <p className="text-xs text-destructive sm:col-start-2 sm:col-span-3">
+                End time must be after start time.
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TimeSelect({
+  ariaLabel,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  ariaLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange} disabled={disabled}>
+      <SelectTrigger aria-label={ariaLabel} className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {TIME_OPTIONS.map((time) => (
+          <SelectItem key={time} value={time}>
+            {timeLabel(time)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 const emptyRoom: RoomDraft = {
   name: "",
@@ -143,7 +323,7 @@ export function QuickActionDialogs() {
   const { user } = useAuth();
   const [leadDraft, setLeadDraft] = useState<LeadDraft>(emptyLead);
   const [clientDraft, setClientDraft] = useState<ClientDraft>(emptyClient);
-  const [therapistDraft, setTherapistDraft] = useState<TherapistDraft>(emptyTherapist);
+  const [therapistDraft, setTherapistDraft] = useState<TherapistDraft>(createEmptyTherapist);
   const [roomDraft, setRoomDraft] = useState<RoomDraft>(emptyRoom);
   const [serviceDraft, setServiceDraft] = useState<ServiceDraft>(emptyService);
   const [saving, setSaving] = useState(false);
@@ -344,7 +524,7 @@ export function QuickActionDialogs() {
       </Dialog>
 
       <Dialog open={quickAction === "therapist"} onOpenChange={(open) => !open && close()}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Add therapist</DialogTitle>
             <DialogDescription>Add a provider to scheduling and reporting.</DialogDescription>
@@ -400,16 +580,6 @@ export function QuickActionDialogs() {
                 }
               />
             </Field>
-            <Field label="Availability">
-              <Input
-                id="therapist-availability"
-                placeholder="Mon–Fri, 9am–5pm"
-                value={therapistDraft.availability}
-                onChange={(event) =>
-                  setTherapistDraft({ ...therapistDraft, availability: event.target.value })
-                }
-              />
-            </Field>
             {locations.length > 0 ? (
               <Field label="Location">
                 <Select
@@ -431,6 +601,14 @@ export function QuickActionDialogs() {
                 </Select>
               </Field>
             ) : null}
+            <div className="sm:col-span-2">
+              <TherapistAvailabilityEditor
+                value={therapistDraft.weeklyAvailability}
+                onChange={(weeklyAvailability) =>
+                  setTherapistDraft({ ...therapistDraft, weeklyAvailability })
+                }
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={close}>
@@ -441,7 +619,8 @@ export function QuickActionDialogs() {
                 saving ||
                 !therapistDraft.name.trim() ||
                 !therapistDraft.title.trim() ||
-                !therapistDraft.licensedSince
+                !therapistDraft.licensedSince ||
+                hasInvalidAvailability(therapistDraft.weeklyAvailability)
               }
               onClick={() => {
                 const locationId = therapistDraft.locationId || locations[0]?.id || "";
@@ -452,7 +631,8 @@ export function QuickActionDialogs() {
                   initials: initials(therapistDraft.name),
                   specialties:
                     therapistDraft.serviceKey === "unspecified" ? [] : [therapistDraft.serviceKey],
-                  availability: therapistDraft.availability.trim() || "Not configured",
+                  availability: availabilitySummary(therapistDraft.weeklyAvailability),
+                  weeklyAvailability: therapistDraft.weeklyAvailability,
                   weeklyAppointments: 0,
                   utilization: 0,
                   rebookingRate: 0,
@@ -464,7 +644,7 @@ export function QuickActionDialogs() {
                 setSaving(true);
                 void persistRecord("therapists", therapist, locationId)
                   .then(() => {
-                    setTherapistDraft(emptyTherapist);
+                    setTherapistDraft(createEmptyTherapist());
                     toast.success("Therapist saved");
                     close();
                   })

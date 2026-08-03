@@ -106,6 +106,16 @@ export interface Appointment {
   locationId: ID;
 }
 
+export type Weekday =
+  "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+
+export interface DayAvailability {
+  day: Weekday;
+  unavailable: boolean;
+  start: string;
+  end: string;
+}
+
 export interface Therapist {
   id: ID;
   name: string;
@@ -113,6 +123,7 @@ export interface Therapist {
   initials: string;
   specialties: ServiceKey[];
   availability: string;
+  weeklyAvailability?: DayAvailability[] | undefined;
   weeklyAppointments: number;
   utilization: number;
   rebookingRate: number;

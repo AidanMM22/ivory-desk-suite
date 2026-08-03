@@ -18,6 +18,12 @@ import { useWorkspace } from "@/lib/workspace";
 const percent = (n: number) => `${Math.round(n * (n <= 1 ? 100 : 1))}%`;
 import type { Therapist } from "@/lib/types";
 
+const scheduleTime = (value: string) => {
+  const [hours, minutes] = value.split(":").map(Number);
+  const period = (hours ?? 0) >= 12 ? "PM" : "AM";
+  return `${(hours ?? 0) % 12 || 12}:${String(minutes ?? 0).padStart(2, "0")} ${period}`;
+};
+
 export const Route = createFileRoute("/therapists")({
   head: () => ({
     meta: [
@@ -103,6 +109,28 @@ function TherapistsPage() {
                   <Stat label="Rebooking" value={percent(detail.rebookingRate)} />
                   <Stat label="Rating" value={detail.reviewRating.toFixed(1)} />
                 </div>
+                {detail.weeklyAvailability ? (
+                  <div>
+                    <SectionTitle>Weekly availability</SectionTitle>
+                    <div className="mt-2 divide-y divide-border rounded-lg border border-border">
+                      {detail.weeklyAvailability.map((day) => (
+                        <div
+                          key={day.day}
+                          className={`flex items-center justify-between gap-3 px-3 py-2 text-sm ${
+                            day.unavailable ? "bg-muted/50 text-muted-foreground" : ""
+                          }`}
+                        >
+                          <span>{day.day}</span>
+                          <span className="text-xs">
+                            {day.unavailable
+                              ? "Unavailable"
+                              : `${scheduleTime(day.start)}–${scheduleTime(day.end)}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div>
                   <SectionTitle>Upcoming schedule</SectionTitle>
                   <ul className="mt-2 space-y-2">
