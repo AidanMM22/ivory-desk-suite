@@ -18,6 +18,8 @@ import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ReviewsRouteImport } from './routes/reviews'
+import { Route as RoomsRouteImport } from './routes/rooms'
+import { Route as ServicesRouteImport } from './routes/services'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TherapistsRouteImport } from './routes/therapists'
 
@@ -66,6 +68,16 @@ const ReviewsRoute = ReviewsRouteImport.update({
   path: '/reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoomsRoute = RoomsRouteImport.update({
+  id: '/rooms',
+  path: '/rooms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesRoute = ServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -87,6 +99,8 @@ export interface FileRoutesByFullPath {
   '/leads': typeof LeadsRoute
   '/reports': typeof ReportsRoute
   '/reviews': typeof ReviewsRoute
+  '/rooms': typeof RoomsRoute
+  '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/therapists': typeof TherapistsRoute
 }
@@ -100,6 +114,8 @@ export interface FileRoutesByTo {
   '/leads': typeof LeadsRoute
   '/reports': typeof ReportsRoute
   '/reviews': typeof ReviewsRoute
+  '/rooms': typeof RoomsRoute
+  '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/therapists': typeof TherapistsRoute
 }
@@ -114,6 +130,8 @@ export interface FileRoutesById {
   '/leads': typeof LeadsRoute
   '/reports': typeof ReportsRoute
   '/reviews': typeof ReviewsRoute
+  '/rooms': typeof RoomsRoute
+  '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/therapists': typeof TherapistsRoute
 }
@@ -129,6 +147,8 @@ export interface FileRouteTypes {
     | '/leads'
     | '/reports'
     | '/reviews'
+    | '/rooms'
+    | '/services'
     | '/settings'
     | '/therapists'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +162,8 @@ export interface FileRouteTypes {
     | '/leads'
     | '/reports'
     | '/reviews'
+    | '/rooms'
+    | '/services'
     | '/settings'
     | '/therapists'
   id:
@@ -155,6 +177,8 @@ export interface FileRouteTypes {
     | '/leads'
     | '/reports'
     | '/reviews'
+    | '/rooms'
+    | '/services'
     | '/settings'
     | '/therapists'
   fileRoutesById: FileRoutesById
@@ -169,6 +193,8 @@ export interface RootRouteChildren {
   LeadsRoute: typeof LeadsRoute
   ReportsRoute: typeof ReportsRoute
   ReviewsRoute: typeof ReviewsRoute
+  RoomsRoute: typeof RoomsRoute
+  ServicesRoute: typeof ServicesRoute
   SettingsRoute: typeof SettingsRoute
   TherapistsRoute: typeof TherapistsRoute
 }
@@ -238,6 +264,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rooms': {
+      id: '/rooms'
+      path: '/rooms'
+      fullPath: '/rooms'
+      preLoaderRoute: typeof RoomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services': {
+      id: '/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -265,6 +305,8 @@ const rootRouteChildren: RootRouteChildren = {
   LeadsRoute: LeadsRoute,
   ReportsRoute: ReportsRoute,
   ReviewsRoute: ReviewsRoute,
+  RoomsRoute: RoomsRoute,
+  ServicesRoute: ServicesRoute,
   SettingsRoute: SettingsRoute,
   TherapistsRoute: TherapistsRoute,
 }

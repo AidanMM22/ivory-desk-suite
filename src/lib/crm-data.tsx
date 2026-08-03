@@ -63,11 +63,7 @@ interface DatabaseRecord {
 interface CrmDataValue {
   revision: number;
   workspaceId: string | null;
-  persistRecord: (
-    entityType: CrmEntityType,
-    entity: object & { id?: string },
-    locationId?: string,
-  ) => Promise<void>;
+  persistRecord: (entityType: CrmEntityType, entity: object, locationId?: string) => Promise<void>;
   removeRecord: (entityType: CrmEntityType, entityId: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -209,7 +205,7 @@ export function CrmDataProvider({
   }, [refresh, supabase, workspaceId]);
 
   const persistRecord = useCallback(
-    async (entityType: CrmEntityType, entity: object & { id?: string }, locationId?: string) => {
+    async (entityType: CrmEntityType, entity: object, locationId?: string) => {
       if (!supabase) return;
       const jsonEntity = entity as JsonRecord;
       const entityId = recordId(entityType, jsonEntity, 0);

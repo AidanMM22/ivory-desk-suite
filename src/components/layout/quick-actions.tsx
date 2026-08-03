@@ -13,6 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { MultiSelectDropdown } from "@/components/shared/multi-select";
 import {
   Select,
   SelectContent,
@@ -24,12 +26,23 @@ import { useWorkspace } from "@/lib/workspace";
 import { clients, leads, services, team, therapists, TODAY, locations } from "@/lib/data";
 import { useCrmData } from "@/lib/crm-data";
 import { useAuth } from "@/lib/auth";
+import {
+  eligibleRooms,
+  eligibleTherapists,
+  hasSchedulingConflict,
+  allRooms,
+  roomIdsForService,
+  therapistIdsForService,
+  therapistAvailableAt,
+} from "@/lib/scheduling";
 import type {
+  Appointment,
   Client,
   DayAvailability,
   Lead,
   LeadSource,
   Location,
+  RoomStatus,
   Service,
   ServiceKey,
   Therapist,
@@ -76,6 +89,10 @@ interface TherapistDraft {
 interface RoomDraft {
   name: string;
   type: string;
+  capacity: string;
+  internalNotes: string;
+  status: RoomStatus;
+  serviceKeys: string[];
   locationId: string;
   locationName: string;
   locationAddress: string;
@@ -85,8 +102,12 @@ interface RoomDraft {
 interface ServiceDraft {
   name: string;
   durations: string;
+  cleanupMinutes: string;
   price: string;
   description: string;
+  roomIds: string[];
+  therapistIds: string[];
+  active: boolean;
 }
 
 const emptyClient: ClientDraft = {
@@ -286,6 +307,10 @@ function TimeSelect({
 const emptyRoom: RoomDraft = {
   name: "",
   type: "Massage room",
+  capacity: "1",
+  internalNotes: "",
+  status: "available",
+  serviceKeys: [],
   locationId: "",
   locationName: "",
   locationAddress: "",
@@ -295,8 +320,12 @@ const emptyRoom: RoomDraft = {
 const emptyService: ServiceDraft = {
   name: "",
   durations: "60",
+  cleanupMinutes: "0",
   price: "",
   description: "",
+  roomIds: [],
+  therapistIds: [],
+  active: true,
 };
 
 const initials = (name: string) =>
@@ -642,7 +671,21 @@ export function QuickActionDialogs() {
                   active: true,
                 };
                 setSaving(true);
-                void persistRecord("therapists", therapist, locationId)
+                const selectedService = services.find(
+                  (service) => service.key === therapistDraft.serviceKey,
+                );
+                const serviceUpdate = selectedService
+                  ? {
+                      ...selectedService,
+                      therapistIds: Array.from(
+                        new Set([...therapistIdsForService(selectedService), therapist.id]),
+                      ),
+                    }
+                  : null;
+                void Promise.all([
+                  persistRecord("therapists", therapist, locationId),
+                  ...(serviceUpdate ? [persistRecord("services", serviceUpdate)] : []),
+                ])
                   .then(() => {
                     setTherapistDraft(createEmptyTherapist());
                     toast.success("Therapist saved");
@@ -663,7 +706,7 @@ export function QuickActionDialogs() {
       </Dialog>
 
       <Dialog open={quickAction === "room"} onOpenChange={(open) => !open && close()}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">Add room</DialogTitle>
             <DialogDescription>
@@ -747,6 +790,58 @@ export function QuickActionDialogs() {
                 onChange={(event) => setRoomDraft({ ...roomDraft, type: event.target.value })}
               />
             </Field>
+            <Field label="Capacity">
+              <Input
+                id="room-capacity"
+                type="number"
+                min="1"
+                value={roomDraft.capacity}
+                onChange={(event) => setRoomDraft({ ...roomDraft, capacity: event.target.value })}
+              />
+            </Field>
+            <Field label="Availability">
+              <Select
+                value={roomDraft.status}
+                onValueChange={(status) =>
+                  setRoomDraft({ ...roomDraft, status: status as RoomStatus })
+                }
+              >
+                <SelectTrigger id="room-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Services">
+                <MultiSelectDropdown
+                  label="Services for this room"
+                  value={roomDraft.serviceKeys}
+                  options={services.map((service) => ({
+                    id: service.key,
+                    label: service.name,
+                  }))}
+                  placeholder="Choose services"
+                  onChange={(serviceKeys) => setRoomDraft({ ...roomDraft, serviceKeys })}
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Internal notes">
+                <Textarea
+                  id="room-notes"
+                  rows={2}
+                  value={roomDraft.internalNotes}
+                  onChange={(event) =>
+                    setRoomDraft({ ...roomDraft, internalNotes: event.target.value })
+                  }
+                />
+              </Field>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={close}>
@@ -757,6 +852,7 @@ export function QuickActionDialogs() {
                 saving ||
                 !roomDraft.name.trim() ||
                 !roomDraft.type.trim() ||
+                Number(roomDraft.capacity) < 1 ||
                 (locations.length === 0 && !roomDraft.locationName.trim())
               }
               onClick={() => {
@@ -767,6 +863,9 @@ export function QuickActionDialogs() {
                   id: crypto.randomUUID(),
                   name: roomDraft.name.trim(),
                   type: roomDraft.type.trim(),
+                  capacity: Number(roomDraft.capacity),
+                  internalNotes: roomDraft.internalNotes.trim(),
+                  status: roomDraft.status,
                 };
                 const location: Location = existing
                   ? { ...existing, rooms: [...existing.rooms, room] }
@@ -778,7 +877,20 @@ export function QuickActionDialogs() {
                       rooms: [room],
                     };
                 setSaving(true);
-                void persistRecord("locations", location, location.id)
+                const selectedServices = new Set(roomDraft.serviceKeys);
+                const serviceUpdates = services.map((service) => ({
+                  ...service,
+                  roomIds: Array.from(
+                    new Set([
+                      ...roomIdsForService(service),
+                      ...(selectedServices.has(service.key) ? [room.id] : []),
+                    ]),
+                  ),
+                }));
+                void Promise.all([
+                  persistRecord("locations", location, location.id),
+                  ...serviceUpdates.map((service) => persistRecord("services", service)),
+                ])
                   .then(() => {
                     setRoomDraft(emptyRoom);
                     toast.success("Room saved");
@@ -799,7 +911,7 @@ export function QuickActionDialogs() {
       </Dialog>
 
       <Dialog open={quickAction === "service"} onOpenChange={(open) => !open && close()}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">Add service</DialogTitle>
             <DialogDescription>
@@ -844,6 +956,57 @@ export function QuickActionDialogs() {
                 }
               />
             </Field>
+            <Field label="Cleanup / buffer">
+              <Input
+                id="service-cleanup"
+                type="number"
+                min="0"
+                step="5"
+                value={serviceDraft.cleanupMinutes}
+                onChange={(event) =>
+                  setServiceDraft({ ...serviceDraft, cleanupMinutes: event.target.value })
+                }
+              />
+            </Field>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+              <div>
+                <Label htmlFor="service-active">Active</Label>
+                <p className="text-xs text-muted-foreground">Available for booking</p>
+              </div>
+              <Switch
+                id="service-active"
+                checked={serviceDraft.active}
+                onCheckedChange={(active) => setServiceDraft({ ...serviceDraft, active })}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Compatible rooms">
+                <MultiSelectDropdown
+                  label="Rooms for this service"
+                  value={serviceDraft.roomIds}
+                  options={allRooms().map((room) => ({
+                    id: room.id,
+                    label: `${room.name} · ${room.locationName}`,
+                  }))}
+                  placeholder="Choose rooms"
+                  onChange={(roomIds) => setServiceDraft({ ...serviceDraft, roomIds })}
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Qualified therapists">
+                <MultiSelectDropdown
+                  label="Therapists for this service"
+                  value={serviceDraft.therapistIds}
+                  options={therapists.map((therapist) => ({
+                    id: therapist.id,
+                    label: therapist.name,
+                  }))}
+                  placeholder="Choose therapists"
+                  onChange={(therapistIds) => setServiceDraft({ ...serviceDraft, therapistIds })}
+                />
+              </Field>
+            </div>
             <div className="sm:col-span-2">
               <Field label="Description">
                 <Textarea
@@ -868,7 +1031,8 @@ export function QuickActionDialogs() {
                 !serviceDraft.name.trim() ||
                 parseDurations(serviceDraft.durations).length === 0 ||
                 serviceDraft.price === "" ||
-                Number(serviceDraft.price) < 0
+                Number(serviceDraft.price) < 0 ||
+                Number(serviceDraft.cleanupMinutes) < 0
               }
               onClick={() => {
                 const id = crypto.randomUUID();
@@ -877,12 +1041,27 @@ export function QuickActionDialogs() {
                   key: id,
                   name: serviceDraft.name.trim(),
                   durations: parseDurations(serviceDraft.durations),
+                  cleanupMinutes: Number(serviceDraft.cleanupMinutes),
                   price: Number(serviceDraft.price),
                   description: serviceDraft.description.trim(),
-                  active: true,
+                  roomIds: serviceDraft.roomIds,
+                  therapistIds: serviceDraft.therapistIds,
+                  active: serviceDraft.active,
                 };
                 setSaving(true);
-                void persistRecord("services", service)
+                const selectedTherapists = new Set(serviceDraft.therapistIds);
+                const therapistUpdates = therapists
+                  .filter((therapist) => selectedTherapists.has(therapist.id))
+                  .map((therapist) => ({
+                    ...therapist,
+                    specialties: Array.from(new Set([...therapist.specialties, service.key])),
+                  }));
+                void Promise.all([
+                  persistRecord("services", service),
+                  ...therapistUpdates.map((therapist) =>
+                    persistRecord("therapists", therapist, therapist.locationId),
+                  ),
+                ])
                   .then(() => {
                     setServiceDraft(emptyService);
                     toast.success("Service saved");
@@ -910,24 +1089,10 @@ export function QuickActionDialogs() {
               Create an appointment from your configured CRM records.
             </DialogDescription>
           </DialogHeader>
-          <BookingForm />
+          <BookingForm onBooked={close} />
           <DialogFooter>
             <Button variant="ghost" onClick={close}>
               Cancel
-            </Button>
-            <Button
-              disabled={
-                services.length === 0 ||
-                therapists.length === 0 ||
-                locations.every((location) => location.rooms.length === 0) ||
-                clients.length + leads.length === 0
-              }
-              onClick={() => {
-                toast.info("Appointment creation is not connected to the database form yet.");
-                close();
-              }}
-            >
-              Book appointment
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1088,119 +1253,223 @@ export function LeadForm({
   );
 }
 
-export function BookingForm() {
+export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment) => void }) {
+  const { persistRecord } = useCrmData();
   const availableServices = services.filter((item) => item.active);
   const [service, setService] = useState(availableServices[0]?.key ?? "");
   const selected = availableServices.find((item) => item.key === service);
-  const rooms = locations.flatMap((location) => location.rooms);
-  if (
-    !selected ||
-    therapists.length === 0 ||
-    rooms.length === 0 ||
-    clients.length + leads.length === 0
-  ) {
+  const rooms = selected ? eligibleRooms(selected) : [];
+  const qualifiedTherapists = selected ? eligibleTherapists(selected) : [];
+  const [subjectId, setSubjectId] = useState(clients[0]?.id ?? leads[0]?.id ?? "");
+  const [duration, setDuration] = useState(String(selected?.durations[0] ?? 60));
+  const [therapistId, setTherapistId] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [date, setDate] = useState(TODAY);
+  const [time, setTime] = useState("14:00");
+  const [price, setPrice] = useState(String(selected?.price ?? 0));
+  const [source, setSource] = useState<LeadSource>("Website booking");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const effectiveTherapistId = qualifiedTherapists.some((item) => item.id === therapistId)
+    ? therapistId
+    : (qualifiedTherapists[0]?.id ?? "");
+  const effectiveRoomId = rooms.some((item) => item.id === roomId) ? roomId : (rooms[0]?.id ?? "");
+
+  if (!selected || clients.length + leads.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-        Add a client or lead, an active service, a therapist, and a treatment room before booking.
+        Add a client or lead and an active service before booking.
       </div>
     );
   }
+
+  const selectService = (serviceKey: string) => {
+    const next = availableServices.find((item) => item.key === serviceKey);
+    setService(serviceKey);
+    setDuration(String(next?.durations[0] ?? 60));
+    setPrice(String(next?.price ?? 0));
+    setTherapistId("");
+    setRoomId("");
+  };
+
+  const book = () => {
+    const subject =
+      clients.find((item) => item.id === subjectId) ?? leads.find((item) => item.id === subjectId);
+    const therapist = qualifiedTherapists.find((item) => item.id === effectiveTherapistId);
+    const room = rooms.find((item) => item.id === effectiveRoomId);
+    if (!subject || !therapist || !room) {
+      toast.error("Choose a qualified therapist and compatible available room.");
+      return;
+    }
+    const start = new Date(`${date}T${time}:00`).toISOString();
+    const serviceDuration = Number(duration);
+    const cleanupMinutes = selected.cleanupMinutes ?? 0;
+    if (!therapistAvailableAt(therapist, start, serviceDuration, cleanupMinutes)) {
+      toast.error(`${therapist.name} is not available for the full appointment and buffer time.`);
+      return;
+    }
+    if (
+      hasSchedulingConflict({
+        start,
+        duration: serviceDuration,
+        cleanupMinutes,
+        roomId: room.id,
+        therapistId: therapist.id,
+      })
+    ) {
+      toast.error("That room or therapist is already booked during this time.");
+      return;
+    }
+    const client = clients.find((item) => item.id === subject.id);
+    const appointment: Appointment = {
+      id: crypto.randomUUID(),
+      clientId: client?.id,
+      leadId: client ? undefined : subject.id,
+      clientName: subject.name,
+      serviceKey: selected.key,
+      duration: serviceDuration,
+      therapistId: therapist.id,
+      roomId: room.id,
+      start,
+      status: "confirmed",
+      price: Number(price),
+      deposit: "not_required",
+      payment: "due",
+      reminder: "scheduled",
+      source,
+      notes: notes.trim(),
+      locationId: room.locationId,
+    };
+    setSaving(true);
+    void persistRecord("appointments", appointment, appointment.locationId)
+      .then(() => {
+        toast.success("Appointment booked");
+        onBooked?.(appointment);
+      })
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : "Could not book the appointment."),
+      )
+      .finally(() => setSaving(false));
+  };
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Client or lead">
-        <Select defaultValue={clients[0]?.id ?? leads[0]!.id}>
+        <Select value={subjectId} onValueChange={setSubjectId}>
           <SelectTrigger id="client-or-lead">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {clients.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name} · client
+            {clients.map((client) => (
+              <SelectItem key={client.id} value={client.id}>
+                {client.name} · client
               </SelectItem>
             ))}
-            {leads.map((l) => (
-              <SelectItem key={l.id} value={l.id}>
-                {l.name} · lead
+            {leads.map((lead) => (
+              <SelectItem key={lead.id} value={lead.id}>
+                {lead.name} · lead
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
       <Field label="Service">
-        <Select value={service} onValueChange={setService}>
+        <Select value={service} onValueChange={selectService}>
           <SelectTrigger id="service">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {availableServices.map((s) => (
-              <SelectItem key={s.key} value={s.key}>
-                {s.name}
+            {availableServices.map((item) => (
+              <SelectItem key={item.key} value={item.key}>
+                {item.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
-      <Field label="Duration">
-        <Select defaultValue={String(selected.durations[0])} key={selected.key}>
+      <Field label="Service duration">
+        <Select value={duration} onValueChange={setDuration}>
           <SelectTrigger id="duration">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {selected.durations.map((dur) => (
-              <SelectItem key={dur} value={String(dur)}>
-                {dur} minutes
+            {selected.durations.map((minutes) => (
+              <SelectItem key={minutes} value={String(minutes)}>
+                {minutes} minutes
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
-      <Field label="Therapist">
-        <Select defaultValue={therapists[0]!.id}>
+      <Field label="Qualified therapist">
+        <Select
+          value={effectiveTherapistId}
+          onValueChange={setTherapistId}
+          disabled={qualifiedTherapists.length === 0}
+        >
           <SelectTrigger id="therapist">
-            <SelectValue />
+            <SelectValue placeholder="No qualified therapist" />
           </SelectTrigger>
           <SelectContent>
-            {therapists.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.name}
+            {qualifiedTherapists.map((therapist) => (
+              <SelectItem key={therapist.id} value={therapist.id}>
+                {therapist.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
-      <Field label="Room">
-        <Select defaultValue={rooms[0]!.id}>
+      <Field label="Compatible room">
+        <Select value={effectiveRoomId} onValueChange={setRoomId} disabled={rooms.length === 0}>
           <SelectTrigger id="room">
-            <SelectValue />
+            <SelectValue placeholder="No compatible room" />
           </SelectTrigger>
           <SelectContent>
-            {rooms.map((r) => (
-              <SelectItem key={r.id} value={r.id}>
-                {r.name} · {r.type}
+            {rooms.map((room) => (
+              <SelectItem key={room.id} value={room.id}>
+                {room.name} · {room.locationName}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
       <Field label="Date">
-        <Input id="date" type="date" defaultValue={TODAY} />
+        <Input
+          id="date"
+          type="date"
+          min={TODAY}
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+        />
       </Field>
       <Field label="Time">
-        <Input id="time" type="time" defaultValue="14:00" />
+        <Input
+          id="time"
+          type="time"
+          value={time}
+          onChange={(event) => setTime(event.target.value)}
+        />
       </Field>
       <Field label="Price">
-        <Input id="price" defaultValue={`$${selected.price}`} key={selected.price} />
+        <Input
+          id="price"
+          type="number"
+          min="0"
+          step="0.01"
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
+        />
       </Field>
       <Field label="Source">
-        <Select defaultValue="Website booking">
+        <Select value={source} onValueChange={(value) => setSource(value as LeadSource)}>
           <SelectTrigger id="booking-source">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {["Website booking", "Google Business Profile", "Referral", "Walk-in", "Instagram"].map(
-              (s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
+              (item) => (
+                <SelectItem key={item} value={item}>
+                  {item}
                 </SelectItem>
               ),
             )}
@@ -1213,9 +1482,34 @@ export function BookingForm() {
             id="appointment-notes"
             rows={2}
             placeholder="Preferences, add-ons, arrival notes"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
           />
         </Field>
       </div>
+      {qualifiedTherapists.length === 0 || rooms.length === 0 ? (
+        <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+          This service needs at least one active qualified therapist and one compatible available
+          room before it can be booked.
+        </p>
+      ) : null}
+      <Button
+        className="sm:col-span-2"
+        disabled={
+          saving ||
+          !subjectId ||
+          !effectiveTherapistId ||
+          !effectiveRoomId ||
+          !date ||
+          !time ||
+          Number(duration) <= 0 ||
+          price === "" ||
+          Number(price) < 0
+        }
+        onClick={book}
+      >
+        {saving ? "Booking…" : "Book appointment"}
+      </Button>
     </div>
   );
 }

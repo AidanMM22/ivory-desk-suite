@@ -35,7 +35,6 @@ import {
   clients,
   day,
   leads,
-  locations,
   serviceByKey,
   services,
   therapistById,
@@ -54,6 +53,7 @@ import {
 } from "@/lib/format";
 import type { Appointment } from "@/lib/types";
 import { useCrmData } from "@/lib/crm-data";
+import { allRooms } from "@/lib/scheduling";
 
 export const Route = createFileRoute("/appointments")({
   head: () => ({
@@ -77,18 +77,13 @@ export const Route = createFileRoute("/appointments")({
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 function AppointmentsPage() {
   const { persistRecord } = useCrmData();
-  const rooms = locations[0]?.rooms ?? [];
+  const rooms = allRooms();
   const [view, setView] = useState("day");
   const [therapistFilter, setTherapistFilter] = useState("all");
   const [roomFilter, setRoomFilter] = useState("all");
   const [booking, setBooking] = useState(false);
   const [detail, setDetail] = useState<Appointment | null>(null);
   const [rows, setRows] = useState<Appointment[]>(seedAppointments);
-  const canBook =
-    clients.length + leads.length > 0 &&
-    services.some((service) => service.active) &&
-    therapists.length > 0 &&
-    rooms.length > 0;
 
   const filtered = useMemo(
     () =>
@@ -405,17 +400,12 @@ function AppointmentsPage() {
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-4 px-4 pb-10">
-            <BookingForm />
-            <Button
-              className="w-full"
-              disabled={!canBook}
-              onClick={() => {
-                toast.info("Appointment creation is not connected to the database form yet.");
+            <BookingForm
+              onBooked={(appointment) => {
+                setRows((current) => [...current, appointment]);
                 setBooking(false);
               }}
-            >
-              Book appointment
-            </Button>
+            />
           </div>
         </SheetContent>
       </Sheet>

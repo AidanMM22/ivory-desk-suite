@@ -27,6 +27,9 @@ export interface Service {
   durations: number[];
   price: number;
   description: string;
+  cleanupMinutes?: number | undefined;
+  roomIds?: ID[] | undefined;
+  therapistIds?: ID[] | undefined;
   active: boolean;
 }
 
@@ -230,12 +233,23 @@ export interface ActivityEvent {
   subjectId?: ID | undefined;
 }
 
+export type RoomStatus = "available" | "maintenance" | "inactive";
+
+export interface Room {
+  id: ID;
+  name: string;
+  type: string;
+  capacity?: number | undefined;
+  internalNotes?: string | undefined;
+  status?: RoomStatus | undefined;
+}
+
 export interface Location {
   id: ID;
   name: string;
   address: string;
   phone: string;
-  rooms: { id: ID; name: string; type: string }[];
+  rooms: Room[];
 }
 
 export interface TeamMember {

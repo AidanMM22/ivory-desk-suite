@@ -40,11 +40,13 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { TherapistAvailabilityEditor } from "@/components/layout/quick-actions";
+import { MultiSelectDropdown } from "@/components/shared/multi-select";
 import { PageHeader, SectionTitle } from "@/components/shared/page";
 import { appointments, locations, serviceByKey, services, therapists } from "@/lib/data";
 import { useCrmData } from "@/lib/crm-data";
 import { clockTime, dateTime, initialsOf } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
+import { futureAppointmentsForTherapist, therapistIdsForService } from "@/lib/scheduling";
 
 const percent = (n: number) => `${Math.round(n * (n <= 1 ? 100 : 1))}%`;
 import type { DayAvailability, ServiceKey, Therapist, Weekday } from "@/lib/types";
@@ -68,7 +70,7 @@ const WEEKDAYS: Weekday[] = [
 interface TherapistDraft {
   name: string;
   title: string;
-  serviceKey: ServiceKey;
+  serviceKeys: ServiceKey[];
   licensedSince: string;
   locationId: string;
   active: boolean;
@@ -78,7 +80,7 @@ interface TherapistDraft {
 const therapistDraft = (therapist: Therapist): TherapistDraft => ({
   name: therapist.name,
   title: therapist.title,
-  serviceKey: therapist.specialties[0] ?? "unspecified",
+  serviceKeys: therapist.specialties,
   licensedSince: String(therapist.licensedSince),
   locationId: therapist.locationId,
   active: therapist.active,
@@ -287,23 +289,17 @@ function TherapistsPage() {
                   onChange={(event) => setDraft({ ...draft, title: event.target.value })}
                 />
               </Field>
-              <Field label="Primary service">
-                <Select
-                  value={draft.serviceKey}
-                  onValueChange={(serviceKey) => setDraft({ ...draft, serviceKey })}
-                >
-                  <SelectTrigger id="edit-therapist-service">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unspecified">Not specified</SelectItem>
-                    {services.map((service) => (
-                      <SelectItem key={service.key} value={service.key}>
-                        {service.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Field label="Services they can perform">
+                <MultiSelectDropdown
+                  label="Services this therapist can perform"
+                  value={draft.serviceKeys}
+                  options={services.map((service) => ({
+                    id: service.key,
+                    label: service.name,
+                  }))}
+                  placeholder="Choose services"
+                  onChange={(serviceKeys) => setDraft({ ...draft, serviceKeys })}
+                />
               </Field>
               <Field label="Licensed since">
                 <Input
@@ -383,12 +379,26 @@ function TherapistsPage() {
                 }
                 onClick={() => {
                   if (!editing || !draft) return;
+                  const removedServices = editing.specialties.filter(
+                    (serviceKey) => !draft.serviceKeys.includes(serviceKey),
+                  );
+                  const impacted = futureAppointmentsForTherapist(editing.id).filter(
+                    (appointment) => removedServices.includes(appointment.serviceKey),
+                  ).length;
+                  if (
+                    impacted > 0 &&
+                    !globalThis.confirm(
+                      `${impacted} future appointment${impacted === 1 ? "" : "s"} use a service qualification you removed. Save anyway?`,
+                    )
+                  ) {
+                    return;
+                  }
                   const updated: Therapist = {
                     ...editing,
                     name: draft.name.trim(),
                     title: draft.title.trim(),
                     initials: initialsOf(draft.name),
-                    specialties: draft.serviceKey === "unspecified" ? [] : [draft.serviceKey],
+                    specialties: draft.serviceKeys,
                     licensedSince: Number(draft.licensedSince),
                     locationId: draft.locationId || locations[0]?.id || "",
                     active: draft.active,
@@ -396,7 +406,24 @@ function TherapistsPage() {
                     weeklyAvailability: draft.weeklyAvailability,
                   };
                   setSaving(true);
-                  void persistRecord("therapists", updated, updated.locationId)
+                  const selected = new Set(draft.serviceKeys);
+                  const serviceUpdates = services
+                    .map((service) => {
+                      const therapistIds = therapistIdsForService(service).filter(
+                        (id) => id !== editing.id,
+                      );
+                      if (selected.has(service.key)) therapistIds.push(editing.id);
+                      return { ...service, therapistIds: Array.from(new Set(therapistIds)) };
+                    })
+                    .filter(
+                      (service, index) =>
+                        service.therapistIds?.join("|") !==
+                        therapistIdsForService(services[index]!).join("|"),
+                    );
+                  void Promise.all([
+                    persistRecord("therapists", updated, updated.locationId),
+                    ...serviceUpdates.map((service) => persistRecord("services", service)),
+                  ])
                     .then(() => {
                       toast.success("Therapist updated");
                       setEditing(null);
@@ -420,10 +447,16 @@ function TherapistsPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {editing?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {editing && appointments.some((appointment) => appointment.therapistId === editing.id)
+                ? "Archive"
+                : "Delete"}{" "}
+              {editing?.name}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the therapist profile. Existing appointment history will
-              remain, but the therapist will no longer be available for scheduling.
+              {editing && appointments.some((appointment) => appointment.therapistId === editing.id)
+                ? "This therapist has appointment history, so the profile will be made inactive instead of permanently deleted."
+                : "This permanently removes the therapist profile and its service qualifications."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -435,9 +468,25 @@ function TherapistsPage() {
                 event.preventDefault();
                 if (!editing) return;
                 setDeleting(true);
-                void removeRecord("therapists", editing.id)
+                const hasHistory = appointments.some(
+                  (appointment) => appointment.therapistId === editing.id,
+                );
+                const operation = hasHistory
+                  ? persistRecord("therapists", { ...editing, active: false }, editing.locationId)
+                  : Promise.all([
+                      removeRecord("therapists", editing.id),
+                      ...services.map((service) =>
+                        persistRecord("services", {
+                          ...service,
+                          therapistIds: therapistIdsForService(service).filter(
+                            (id) => id !== editing.id,
+                          ),
+                        }),
+                      ),
+                    ]).then(() => undefined);
+                void operation
                   .then(() => {
-                    toast.success("Therapist deleted");
+                    toast.success(hasHistory ? "Therapist archived" : "Therapist deleted");
                     setDeleteOpen(false);
                     setEditing(null);
                     setDraft(null);
@@ -450,7 +499,12 @@ function TherapistsPage() {
                   .finally(() => setDeleting(false));
               }}
             >
-              {deleting ? "Deleting…" : "Delete therapist"}
+              {deleting
+                ? "Updating…"
+                : editing &&
+                    appointments.some((appointment) => appointment.therapistId === editing.id)
+                  ? "Archive therapist"
+                  : "Delete therapist"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
