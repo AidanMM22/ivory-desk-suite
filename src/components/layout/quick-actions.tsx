@@ -23,9 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWorkspace } from "@/lib/workspace";
-import { clients, leads, services, team, therapists, TODAY, locations } from "@/lib/data";
+import { clients, services, therapists, TODAY, locations } from "@/lib/data";
 import { useCrmData } from "@/lib/crm-data";
-import { useAuth } from "@/lib/auth";
+import { availableClientTags } from "@/lib/client-tags";
 import {
   eligibleRooms,
   eligibleTherapists,
@@ -39,7 +39,6 @@ import type {
   Appointment,
   Client,
   DayAvailability,
-  Lead,
   LeadSource,
   Location,
   RoomStatus,
@@ -49,32 +48,13 @@ import type {
   Weekday,
 } from "@/lib/types";
 
-interface LeadDraft {
-  name: string;
-  phone: string;
-  email: string;
-  serviceInterest: ServiceKey;
-  source: LeadSource;
-  ownerId: string;
-  notes: string;
-}
-
-const emptyLead: LeadDraft = {
-  name: "",
-  phone: "",
-  email: "",
-  serviceInterest: "unspecified",
-  source: "Website booking",
-  ownerId: "unassigned",
-  notes: "",
-};
-
 interface ClientDraft {
   name: string;
   phone: string;
   email: string;
   preferredService: ServiceKey;
   locationId: string;
+  tags: string[];
 }
 
 interface TherapistDraft {
@@ -116,6 +96,7 @@ const emptyClient: ClientDraft = {
   email: "",
   preferredService: "unspecified",
   locationId: "",
+  tags: [],
 };
 
 const WEEKDAYS: Weekday[] = [
@@ -349,8 +330,6 @@ const parseDurations = (value: string) =>
 export function QuickActionDialogs() {
   const { quickAction, setQuickAction, addTask } = useWorkspace();
   const { persistRecord } = useCrmData();
-  const { user } = useAuth();
-  const [leadDraft, setLeadDraft] = useState<LeadDraft>(emptyLead);
   const [clientDraft, setClientDraft] = useState<ClientDraft>(emptyClient);
   const [therapistDraft, setTherapistDraft] = useState<TherapistDraft>(createEmptyTherapist);
   const [roomDraft, setRoomDraft] = useState<RoomDraft>(emptyRoom);
@@ -360,64 +339,6 @@ export function QuickActionDialogs() {
 
   return (
     <>
-      <Dialog open={quickAction === "lead"} onOpenChange={(o) => !o && close()}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-display">Add lead</DialogTitle>
-            <DialogDescription>Add an inquiry to the shared lead pipeline.</DialogDescription>
-          </DialogHeader>
-          <LeadForm value={leadDraft} onChange={setLeadDraft} />
-          <DialogFooter>
-            <Button variant="ghost" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              disabled={
-                !leadDraft.name.trim() || (!leadDraft.phone.trim() && !leadDraft.email.trim())
-              }
-              onClick={() => {
-                const now = new Date().toISOString();
-                const lead: Lead = {
-                  id: crypto.randomUUID(),
-                  ...leadDraft,
-                  name: leadDraft.name.trim(),
-                  phone: leadDraft.phone.trim(),
-                  email: leadDraft.email.trim(),
-                  stage: "new",
-                  lastContactAt: now,
-                  nextFollowUpAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-                  value:
-                    services.find((service) => service.key === leadDraft.serviceInterest)?.price ??
-                    0,
-                  consent: {
-                    sms: "pending",
-                    email: "pending",
-                    marketing: false,
-                    updatedAt: now,
-                  },
-                  ownerId: user?.id ?? "unassigned",
-                  locationId: locations[0]?.id ?? "",
-                  createdAt: now,
-                };
-                void persistRecord("leads", lead, lead.locationId)
-                  .then(() => {
-                    setLeadDraft(emptyLead);
-                    toast.success("Lead saved");
-                    close();
-                  })
-                  .catch((error: unknown) =>
-                    toast.error(
-                      error instanceof Error ? error.message : "Could not save the lead.",
-                    ),
-                  );
-              }}
-            >
-              Save lead
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={quickAction === "client"} onOpenChange={(open) => !open && close()}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -493,6 +414,17 @@ export function QuickActionDialogs() {
                 </Field>
               </div>
             ) : null}
+            <div className="sm:col-span-2">
+              <Field label="Tags">
+                <MultiSelectDropdown
+                  label="Client tags"
+                  value={clientDraft.tags}
+                  options={availableClientTags().map((tag) => ({ id: tag, label: tag }))}
+                  placeholder="Add tags"
+                  onChange={(tags) => setClientDraft({ ...clientDraft, tags })}
+                />
+              </Field>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={close}>
@@ -515,7 +447,7 @@ export function QuickActionDialogs() {
                   lifetimeValue: 0,
                   visitCount: 0,
                   preferredService: clientDraft.preferredService,
-                  tags: [],
+                  tags: clientDraft.tags,
                   rebooked: false,
                   consent: {
                     sms: "pending",
@@ -1146,113 +1078,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function LeadForm({
-  value,
-  onChange,
-}: {
-  value: LeadDraft;
-  onChange: (value: LeadDraft) => void;
-}) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Full name">
-        <Input
-          id="full-name"
-          placeholder="Jamie Ortega"
-          value={value.name}
-          onChange={(event) => onChange({ ...value, name: event.target.value })}
-        />
-      </Field>
-      <Field label="Phone">
-        <Input
-          id="phone"
-          placeholder="(253) 555-0123"
-          value={value.phone}
-          onChange={(event) => onChange({ ...value, phone: event.target.value })}
-        />
-      </Field>
-      <Field label="Email">
-        <Input
-          id="email"
-          type="email"
-          placeholder="jamie@example.com"
-          value={value.email}
-          onChange={(event) => onChange({ ...value, email: event.target.value })}
-        />
-      </Field>
-      <Field label="Service interest">
-        <Select
-          value={value.serviceInterest}
-          onValueChange={(serviceInterest: ServiceKey) => onChange({ ...value, serviceInterest })}
-        >
-          <SelectTrigger id="service-interest">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="unspecified">Not specified</SelectItem>
-            {services.map((s) => (
-              <SelectItem key={s.key} value={s.key}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field label="Source">
-        <Select
-          value={value.source}
-          onValueChange={(source: LeadSource) => onChange({ ...value, source })}
-        >
-          <SelectTrigger id="source">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {[
-              "Website booking",
-              "Google Business Profile",
-              "Instagram",
-              "Referral",
-              "Missed call",
-              "Walk-in",
-              "Yelp",
-            ].map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field label="Owner">
-        <Select value={value.ownerId} onValueChange={(ownerId) => onChange({ ...value, ownerId })}>
-          <SelectTrigger id="owner">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="unassigned">Current user</SelectItem>
-            {team.map((member) => (
-              <SelectItem key={member.id} value={member.id}>
-                {member.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <div className="sm:col-span-2">
-        <Field label="Notes">
-          <Textarea
-            id="notes"
-            placeholder="What are they looking for?"
-            rows={3}
-            value={value.notes}
-            onChange={(event) => onChange({ ...value, notes: event.target.value })}
-          />
-        </Field>
-      </div>
-    </div>
-  );
-}
-
 export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment) => void }) {
   const { persistRecord } = useCrmData();
   const availableServices = services.filter((item) => item.active);
@@ -1260,7 +1085,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   const selected = availableServices.find((item) => item.key === service);
   const rooms = selected ? eligibleRooms(selected) : [];
   const qualifiedTherapists = selected ? eligibleTherapists(selected) : [];
-  const [subjectId, setSubjectId] = useState(clients[0]?.id ?? leads[0]?.id ?? "");
+  const [subjectId, setSubjectId] = useState(clients[0]?.id ?? "");
   const [duration, setDuration] = useState(String(selected?.durations[0] ?? 60));
   const [therapistId, setTherapistId] = useState("");
   const [roomId, setRoomId] = useState("");
@@ -1275,10 +1100,10 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
     : (qualifiedTherapists[0]?.id ?? "");
   const effectiveRoomId = rooms.some((item) => item.id === roomId) ? roomId : (rooms[0]?.id ?? "");
 
-  if (!selected || clients.length + leads.length === 0) {
+  if (!selected || clients.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-        Add a client or lead and an active service before booking.
+        Add a client and an active service before booking.
       </div>
     );
   }
@@ -1293,8 +1118,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   };
 
   const book = () => {
-    const subject =
-      clients.find((item) => item.id === subjectId) ?? leads.find((item) => item.id === subjectId);
+    const subject = clients.find((item) => item.id === subjectId);
     const therapist = qualifiedTherapists.find((item) => item.id === effectiveTherapistId);
     const room = rooms.find((item) => item.id === effectiveRoomId);
     if (!subject || !therapist || !room) {
@@ -1320,11 +1144,9 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
       toast.error("That room or therapist is already booked during this time.");
       return;
     }
-    const client = clients.find((item) => item.id === subject.id);
     const appointment: Appointment = {
       id: crypto.randomUUID(),
-      clientId: client?.id,
-      leadId: client ? undefined : subject.id,
+      clientId: subject.id,
       clientName: subject.name,
       serviceKey: selected.key,
       duration: serviceDuration,
@@ -1340,8 +1162,14 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
       notes: notes.trim(),
       locationId: room.locationId,
     };
+    const bookedClient = subject.tags.includes("Lead")
+      ? { ...subject, tags: subject.tags.filter((tag) => tag !== "Lead") }
+      : null;
     setSaving(true);
-    void persistRecord("appointments", appointment, appointment.locationId)
+    void Promise.all([
+      persistRecord("appointments", appointment, appointment.locationId),
+      ...(bookedClient ? [persistRecord("clients", bookedClient, bookedClient.locationId)] : []),
+    ])
       .then(() => {
         toast.success("Appointment booked");
         onBooked?.(appointment);
@@ -1354,7 +1182,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Client or lead">
+      <Field label="Client">
         <Select value={subjectId} onValueChange={setSubjectId}>
           <SelectTrigger id="client-or-lead">
             <SelectValue />
@@ -1362,12 +1190,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
           <SelectContent>
             {clients.map((client) => (
               <SelectItem key={client.id} value={client.id}>
-                {client.name} · client
-              </SelectItem>
-            ))}
-            {leads.map((lead) => (
-              <SelectItem key={lead.id} value={lead.id}>
-                {lead.name} · lead
+                {client.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1515,22 +1338,22 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
 }
 
 export function MessageForm() {
-  if (leads.length + clients.length === 0) {
+  if (clients.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-        Add a lead or client before composing a message.
+        Add a client before composing a message.
       </div>
     );
   }
   return (
     <div className="space-y-4">
       <Field label="Recipient">
-        <Select defaultValue={leads[0]?.id ?? clients[0]!.id}>
+        <Select defaultValue={clients[0]!.id}>
           <SelectTrigger id="recipient">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {[...leads, ...clients].map((p) => (
+            {clients.map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 {p.name}
               </SelectItem>

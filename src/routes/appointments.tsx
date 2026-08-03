@@ -34,7 +34,6 @@ import {
   appointments as seedAppointments,
   clients,
   day,
-  leads,
   serviceByKey,
   services,
   therapistById,

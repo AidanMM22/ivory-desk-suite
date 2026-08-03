@@ -27,7 +27,7 @@ import {
   appointments,
   attribution,
   automations,
-  leads,
+  clients,
   locations,
   serviceByKey,
   therapists,
@@ -40,7 +40,6 @@ import {
   clockTime,
   currency,
   dateTime,
-  leadStages,
 } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
@@ -52,12 +51,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Daily operations dashboard for M&M Massage Spa in Tacoma: leads, bookings, revenue, rebooking, and automation health.",
+          "Daily operations dashboard for M&M Massage Spa in Tacoma: clients, bookings, revenue, rebooking, and automation health.",
       },
       { property: "og:title", content: "Dashboard — M&M Spa CRM" },
       {
         property: "og:description",
-        content: "Leads, bookings, revenue, and automation health at a glance.",
+        content: "Clients, bookings, revenue, and automation health at a glance.",
       },
     ],
   }),
@@ -72,21 +71,26 @@ function Dashboard() {
     .filter((a) => a.start.startsWith(TODAY))
     .sort((a, b) => a.start.localeCompare(b.start));
   const openTasks = tasks.filter((t) => !t.done);
-  const bookedLeads = leads.filter((lead) => lead.stage === "booked").length;
+  const prospectiveClients = clients.filter((client) => client.tags.includes("Lead"));
+  const servedClients = clients.filter((client) => client.visitCount > 0);
   const realizedRevenue = appointments
     .filter((appointment) => appointment.payment === "paid")
     .reduce((sum, appointment) => sum + appointment.price, 0);
   const kpis = [
-    { label: "Leads", value: String(leads.length), delta: "Current workspace" },
+    {
+      label: "Prospective clients",
+      value: String(prospectiveClients.length),
+      delta: 'Tagged "Lead"',
+    },
     {
       label: "Appointments",
       value: String(appointments.length),
       delta: `${todays.length} scheduled today`,
     },
     {
-      label: "Lead → booking",
-      value: leads.length ? `${((bookedLeads / leads.length) * 100).toFixed(1)}%` : "0%",
-      delta: `${bookedLeads} converted leads`,
+      label: "Served clients",
+      value: String(servedClients.length),
+      delta: `${clients.length} total client records`,
     },
     { label: "Collected revenue", value: currency(realizedRevenue), delta: "Paid appointments" },
   ];
@@ -132,8 +136,8 @@ function Dashboard() {
       />
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => setQuickAction("lead")}>
-          <UserPlus className="mr-2 h-4 w-4" /> Add lead
+        <Button variant="outline" onClick={() => setQuickAction("client")}>
+          <UserPlus className="mr-2 h-4 w-4" /> Add client
         </Button>
         <Button variant="outline" onClick={() => setQuickAction("appointment")}>
           <CalendarDays className="mr-2 h-4 w-4" /> Book appointment
@@ -214,23 +218,31 @@ function Dashboard() {
 
         <Card className="surface-soft">
           <CardHeader>
-            <CardTitle className="font-display text-lg">Lead pipeline</CardTitle>
+            <CardTitle className="font-display text-lg">Client status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {leadStages.map((stage) => {
-              const count = leads.filter((l) => l.stage === stage.key).length;
+            {[
+              { label: "Prospective", count: prospectiveClients.length },
+              {
+                label: "Active / previously served",
+                count: clients.length - prospectiveClients.length,
+              },
+            ].map((status) => {
               return (
-                <div key={stage.key} className="space-y-1.5">
+                <div key={status.label} className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{stage.label}</span>
-                    <span className="font-medium">{count}</span>
+                    <span className="text-muted-foreground">{status.label}</span>
+                    <span className="font-medium">{status.count}</span>
                   </div>
-                  <Progress value={(count / Math.max(leads.length, 1)) * 100} className="h-1.5" />
+                  <Progress
+                    value={(status.count / Math.max(clients.length, 1)) * 100}
+                    className="h-1.5"
+                  />
                 </div>
               );
             })}
             <Button variant="outline" className="w-full" asChild>
-              <Link to="/leads">Open pipeline</Link>
+              <Link to="/clients">Open clients</Link>
             </Button>
           </CardContent>
         </Card>

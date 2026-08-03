@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { CalendarPlus, MessageSquare, Search, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState, PageHeader, RestrictedNotice, SectionTitle } from "@/components/shared/page";
 import { ConsentChip, StatusChip } from "@/components/shared/chips";
+import { MultiSelectDropdown } from "@/components/shared/multi-select";
 import {
   appointments,
   clients as seedClients,
@@ -46,6 +47,8 @@ import {
   initialsOf,
 } from "@/lib/format";
 import { useWorkspace } from "@/lib/workspace";
+import { useCrmData } from "@/lib/crm-data";
+import { availableClientTags } from "@/lib/client-tags";
 import type { Client } from "@/lib/types";
 
 export const Route = createFileRoute("/clients")({
@@ -69,31 +72,30 @@ export const Route = createFileRoute("/clients")({
 
 function ClientsPage() {
   const { setQuickAction } = useWorkspace();
+  useCrmData();
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("all");
   const [sort, setSort] = useState("ltv");
   const [open, setOpen] = useState<Client | null>(null);
 
-  const tags = useMemo(() => Array.from(new Set(seedClients.flatMap((c) => c.tags))), []);
+  const tags = availableClientTags();
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return seedClients
-      .filter(
-        (c) =>
-          (!q ||
-            c.name.toLowerCase().includes(q) ||
-            c.email.toLowerCase().includes(q) ||
-            c.phone.includes(q)) &&
-          (tag === "all" || c.tags.includes(tag)),
-      )
-      .sort((a, b) => {
-        if (sort === "name") return a.name.localeCompare(b.name);
-        if (sort === "visits") return b.visitCount - a.visitCount;
-        if (sort === "recent") return (b.lastVisitAt ?? "").localeCompare(a.lastVisitAt ?? "");
-        return b.lifetimeValue - a.lifetimeValue;
-      });
-  }, [query, tag, sort]);
+  const q = query.trim().toLowerCase();
+  const rows = seedClients
+    .filter(
+      (client) =>
+        (!q ||
+          client.name.toLowerCase().includes(q) ||
+          client.email.toLowerCase().includes(q) ||
+          client.phone.includes(q)) &&
+        (tag === "all" || client.tags.includes(tag)),
+    )
+    .sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "visits") return b.visitCount - a.visitCount;
+      if (sort === "recent") return (b.lastVisitAt ?? "").localeCompare(a.lastVisitAt ?? "");
+      return b.lifetimeValue - a.lifetimeValue;
+    });
   const averageLifetimeValue = seedClients.length
     ? Math.round(
         seedClients.reduce((sum, client) => sum + client.lifetimeValue, 0) / seedClients.length,
@@ -234,13 +236,22 @@ function ClientsPage() {
         </Card>
       )}
 
-      <ClientProfile client={open} onClose={() => setOpen(null)} />
+      <ClientProfile client={open} onClose={() => setOpen(null)} onUpdate={setOpen} />
     </div>
   );
 }
 
-function ClientProfile({ client, onClose }: { client: Client | null; onClose: () => void }) {
+function ClientProfile({
+  client,
+  onClose,
+  onUpdate,
+}: {
+  client: Client | null;
+  onClose: () => void;
+  onUpdate: (client: Client) => void;
+}) {
   const { role, can, setQuickAction } = useWorkspace();
+  const { persistRecord } = useCrmData();
   const history = appointments.filter((a) => a.clientId === client?.id);
   const convo = conversations.find((c) => c.subjectId === client?.id);
 
@@ -273,9 +284,6 @@ function ClientProfile({ client, onClose }: { client: Client | null; onClose: ()
                 <Button variant="outline" onClick={() => setQuickAction("message")}>
                   <MessageSquare className="mr-2 h-4 w-4" /> Message
                 </Button>
-                <Button variant="outline" onClick={() => toast.success("Task created")}>
-                  Add task
-                </Button>
               </div>
 
               <Tabs defaultValue="overview">
@@ -303,7 +311,29 @@ function ClientProfile({ client, onClose }: { client: Client | null; onClose: ()
                       value={client.intakeComplete ? "Complete" : "Incomplete"}
                     />
                   </div>
-                  <p className="text-sm text-muted-foreground">{client.tags.join(" · ")}</p>
+                  <div className="space-y-1.5">
+                    <SectionTitle>Tags</SectionTitle>
+                    <MultiSelectDropdown
+                      label="Client tags"
+                      value={client.tags}
+                      options={availableClientTags().map((tag) => ({ id: tag, label: tag }))}
+                      placeholder="Add tags"
+                      onChange={(tags) => {
+                        const updated = { ...client, tags };
+                        onUpdate(updated);
+                        void persistRecord("clients", updated, updated.locationId)
+                          .then(() => toast.success("Client tags updated"))
+                          .catch((error: unknown) => {
+                            onUpdate(client);
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : "Could not update client tags.",
+                            );
+                          });
+                      }}
+                    />
+                  </div>
                   <div className="rounded-lg border border-border p-3 text-sm">
                     <SectionTitle>Marketing eligibility</SectionTitle>
                     <p className="mt-2 text-muted-foreground">

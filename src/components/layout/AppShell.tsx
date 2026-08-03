@@ -16,7 +16,6 @@ import {
   Settings,
   Sparkles,
   Star,
-  UserPlus,
   Users,
   UsersRound,
   Workflow,
@@ -46,7 +45,6 @@ import { QuickActionDialogs } from "./quick-actions";
 
 export const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/leads", label: "Leads", icon: UserPlus },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/appointments", label: "Appointments", icon: CalendarDays },
   { to: "/inbox", label: "Inbox", icon: Inbox },
@@ -238,9 +236,6 @@ function QuickActionMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuLabel>Add to CRM</DropdownMenuLabel>
-        <DropdownMenuItem onSelect={() => setQuickAction("lead")}>
-          <UserPlus className="mr-2 h-4 w-4" /> Add lead
-        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setQuickAction("client")}>
           <Users className="mr-2 h-4 w-4" /> Add client
         </DropdownMenuItem>
@@ -329,7 +324,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-muted-foreground shadow-sm transition-all hover:border-foreground/20 hover:shadow sm:max-w-md"
             >
               <Search className="h-4 w-4 shrink-0" />
-              <span className="truncate">Search clients, leads, appointments…</span>
+              <span className="truncate">Search clients and appointments…</span>
               <kbd className="ml-auto hidden shrink-0 rounded border border-border px-1.5 text-xs sm:inline">
                 ⌘K
               </kbd>

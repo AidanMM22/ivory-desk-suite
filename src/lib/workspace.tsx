@@ -6,7 +6,7 @@ import { notifications as seedNotifications, tasks as seedTasks, locations } fro
 import type { NotificationItem, Role, Task } from "./types";
 
 export type QuickAction =
-  "lead" | "client" | "therapist" | "room" | "service" | "appointment" | "message" | "task" | null;
+  "client" | "therapist" | "room" | "service" | "appointment" | "message" | "task" | null;
 
 interface WorkspaceValue {
   role: Role;

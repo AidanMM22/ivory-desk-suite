@@ -85,13 +85,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Operational CRM workspace for M&M Massage Spa in Tacoma, WA: leads, clients, appointments, inbox, and automations.",
+          "Operational CRM workspace for M&M Massage Spa in Tacoma, WA: clients, appointments, inbox, and automations.",
       },
       { name: "author", content: "M&M Massage Spa" },
       { property: "og:title", content: "M&M Spa CRM — Tacoma, WA" },
       {
         property: "og:description",
-        content: "Leads, clients, appointments, inbox, and automations for M&M Massage Spa.",
+        content: "Clients, appointments, inbox, and automations for M&M Massage Spa.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

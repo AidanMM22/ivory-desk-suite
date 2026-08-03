@@ -50,7 +50,11 @@ const integrations = [
   { name: "GitHub", detail: "Source control sync", status: "Connected" },
   { name: "Twilio", detail: "SMS + missed-call text back", status: "Placeholder" },
   { name: "Email provider", detail: "Transactional + campaign email", status: "Placeholder" },
-  { name: "Google Business Profile", detail: "Reviews and profile leads", status: "Placeholder" },
+  {
+    name: "Google Business Profile",
+    detail: "Reviews and prospective client inquiries",
+    status: "Placeholder",
+  },
   { name: "Stripe", detail: "Deposits, packages, gift cards", status: "Placeholder" },
   {
     name: `${BUSINESS.website} booking`,
@@ -135,7 +139,7 @@ function SettingsPage() {
                     "Require SMS consent before marketing",
                     "Honor STOP replies automatically",
                     "Email me a daily schedule digest",
-                    "Notify on new leads",
+                    "Notify on new prospective clients",
                     "Notify on no-shows",
                     "Quiet hours 9:00p–8:00a",
                   ].map((p, i) => (

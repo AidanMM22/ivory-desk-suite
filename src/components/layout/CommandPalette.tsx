@@ -9,7 +9,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useWorkspace } from "@/lib/workspace";
-import { clients, leads, appointments } from "@/lib/data";
+import { clients, appointments } from "@/lib/data";
 import { dateTime } from "@/lib/format";
 import { navItems } from "./AppShell";
 
@@ -37,15 +37,6 @@ export function CommandPalette() {
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Quick actions">
-          <CommandItem
-            value="add lead"
-            onSelect={() => {
-              setPaletteOpen(false);
-              setQuickAction("lead");
-            }}
-          >
-            Add lead
-          </CommandItem>
           <CommandItem
             value="book appointment"
             onSelect={() => {
@@ -99,14 +90,6 @@ export function CommandPalette() {
             <CommandItem key={c.id} value={`client ${c.name}`} onSelect={() => go("/clients")}>
               {c.name}
               <span className="ml-auto text-xs text-muted-foreground">{c.visitCount} visits</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-        <CommandGroup heading="Leads">
-          {leads.map((l) => (
-            <CommandItem key={l.id} value={`lead ${l.name}`} onSelect={() => go("/leads")}>
-              {l.name}
-              <span className="ml-auto text-xs text-muted-foreground">{l.source}</span>
             </CommandItem>
           ))}
         </CommandGroup>
