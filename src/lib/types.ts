@@ -84,6 +84,7 @@ export interface Client {
   giftCards: { id: ID; code: string; balance: number }[];
   locationId: ID;
   createdAt: string;
+  archivedAt?: string | undefined;
 }
 
 export type AppointmentStatus =

@@ -29,17 +29,27 @@ interface WorkspaceValue {
 }
 
 export type Permission =
-  "settings.business" | "settings.team" | "reports.revenue" | "clients.allNotes" | "campaigns.send";
+  | "settings.business"
+  | "settings.team"
+  | "reports.revenue"
+  | "clients.edit"
+  | "clients.delete"
+  | "clients.internalNotes"
+  | "clients.restrictedNotes"
+  | "campaigns.send";
 
 const permissions: Record<Role, Permission[]> = {
   owner: [
     "settings.business",
     "settings.team",
     "reports.revenue",
-    "clients.allNotes",
+    "clients.edit",
+    "clients.delete",
+    "clients.internalNotes",
+    "clients.restrictedNotes",
     "campaigns.send",
   ],
-  front_desk: ["reports.revenue", "clients.allNotes", "campaigns.send"],
+  front_desk: ["reports.revenue", "clients.edit", "clients.internalNotes", "campaigns.send"],
   therapist: [],
 };
 

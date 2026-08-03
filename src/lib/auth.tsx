@@ -43,6 +43,11 @@ function slugify(value: string) {
     .slice(0, 70);
 }
 
+function normalizeRole(value: unknown): Role {
+  if (value === "owner" || value === "front_desk" || value === "therapist") return value;
+  throw new Error("Your workspace membership has an unsupported role.");
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
@@ -79,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setMembership({
         workspaceId: member.workspace_id,
         workspaceName: workspace.name,
-        role: member.role as Role,
+        role: normalizeRole(member.role),
       });
     },
     [supabase],
