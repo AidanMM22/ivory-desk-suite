@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { CalendarDays, Check, ChevronDown, ChevronsUpDown, Clock } from "lucide-react";
+import { useRef, useState } from "react";
+import { CalendarDays, Check, ChevronsUpDown, Clock } from "lucide-react";
 import { format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { MultiSelectDropdown } from "@/components/shared/multi-select";
@@ -1071,8 +1071,19 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function nextBookingSlot() {
+  const next = new Date();
+  next.setSeconds(0, 0);
+  next.setMinutes(next.getMinutes() + (30 - (next.getMinutes() % 30)));
+  return {
+    date: format(next, "yyyy-MM-dd"),
+    time: format(next, "HH:mm"),
+  };
+}
+
 export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment) => void }) {
   const { persistRecord } = useCrmData();
+  const initialBookingSlot = useRef(nextBookingSlot()).current;
   const availableServices = services.filter((item) => item.active);
   const activeClients = clients.filter((client) => !client.archivedAt);
   const [service, setService] = useState(availableServices[0]?.key ?? "");
@@ -1084,15 +1095,16 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   const [duration, setDuration] = useState(String(durationOptions[0]?.duration ?? 60));
   const [therapistId, setTherapistId] = useState("");
   const [roomId, setRoomId] = useState("");
-  const [date, setDate] = useState(TODAY);
-  const [time, setTime] = useState("14:00");
+  const [date, setDate] = useState(initialBookingSlot.date);
+  const [time, setTime] = useState(initialBookingSlot.time);
   const [source, setSource] = useState<LeadSource>("Website booking");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const serviceDuration = Number(duration);
   const cleanupMinutes = selected?.cleanupMinutes ?? 0;
+  const timeIsValid = /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
   const candidateStart =
-    date && time && Number.isFinite(serviceDuration)
+    date && timeIsValid && Number.isFinite(serviceDuration)
       ? new Date(`${date}T${time}:00`).toISOString()
       : "";
   const selectedTimeIsPast =
@@ -1140,25 +1152,27 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   const selectedPrice = selected ? servicePriceForDuration(selected, serviceDuration) : 0;
   const bookingBlocker = !subjectId
     ? "Search for and select a client to continue."
-    : qualifiedTherapists.length === 0
-      ? "No active therapist is assigned to perform this service."
-      : eligibleServiceRooms.length === 0
-        ? "No available room is assigned to this service."
-        : locationCompatibleTherapists.length === 0
-          ? "The qualified therapists and compatible rooms for this service are assigned to different locations."
-          : selectedTimeIsPast
-            ? "Choose a future appointment time."
-            : scheduledTherapists.length === 0
-              ? "No qualified therapist is scheduled for the full appointment and cleanup time."
-              : availableTherapists.length === 0
-                ? "All qualified therapists are already booked during this time."
-                : !effectiveTherapistId
-                  ? "Choose an available therapist to continue."
-                  : availableRooms.length === 0
-                    ? "No compatible room is free at the selected therapist's location."
-                    : !effectiveRoomId
-                      ? "Choose an available room to continue."
-                      : null;
+    : !timeIsValid
+      ? "Enter a valid time in HH:MM format."
+      : qualifiedTherapists.length === 0
+        ? "No active therapist is assigned to perform this service."
+        : eligibleServiceRooms.length === 0
+          ? "No available room is assigned to this service."
+          : locationCompatibleTherapists.length === 0
+            ? "The qualified therapists and compatible rooms for this service are assigned to different locations."
+            : selectedTimeIsPast
+              ? "Choose a future appointment time."
+              : scheduledTherapists.length === 0
+                ? "No qualified therapist is scheduled for the full appointment and cleanup time."
+                : availableTherapists.length === 0
+                  ? "All qualified therapists are already booked during this time."
+                  : !effectiveTherapistId
+                    ? "Choose an available therapist to continue."
+                    : availableRooms.length === 0
+                      ? "No compatible room is free at the selected therapist's location."
+                      : !effectiveRoomId
+                        ? "Choose an available room to continue."
+                        : null;
 
   if (!selected || activeClients.length === 0) {
     return (
@@ -1508,6 +1522,8 @@ function DateTimeFields({
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeOptionsOpen, setTimeOptionsOpen] = useState(false);
+  const [manualTimeEntry, setManualTimeEntry] = useState(false);
+  const timeInputRef = useRef<HTMLInputElement>(null);
   const selectedDate = date ? new Date(`${date}T12:00:00`) : undefined;
   const optionIsPast = (optionTime: string) =>
     new Date(`${date}T${optionTime}:00`).getTime() < Date.now();
@@ -1544,29 +1560,47 @@ function DateTimeFields({
       </div>
       <div className="space-y-1.5">
         <Label>Start time</Label>
-        <div className="flex">
-          <div className="relative min-w-0 flex-1">
-            <Clock className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="time"
-              step="60"
-              className="rounded-r-none bg-background pl-9"
-              value={time}
-              onChange={(event) => onTimeChange(event.target.value)}
-            />
-          </div>
-          <Popover open={timeOptionsOpen} onOpenChange={setTimeOptionsOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 rounded-l-none border-l-0 bg-background"
-                aria-label="Show available time options"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
+        <Popover
+          open={timeOptionsOpen}
+          onOpenChange={(nextOpen) => {
+            setTimeOptionsOpen(nextOpen);
+            if (!nextOpen && !manualTimeEntry) timeInputRef.current?.blur();
+          }}
+        >
+          <PopoverAnchor asChild>
+            <div className="relative">
+              <Clock className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={timeInputRef}
+                type="text"
+                inputMode="numeric"
+                placeholder="HH:MM"
+                className="bg-background pl-9"
+                value={time}
+                readOnly={!manualTimeEntry}
+                title="Click once to choose a time. Click again to type a time."
+                onClick={() => {
+                  if (timeOptionsOpen) {
+                    setTimeOptionsOpen(false);
+                    setManualTimeEntry(true);
+                    requestAnimationFrame(() => {
+                      timeInputRef.current?.focus();
+                      timeInputRef.current?.select();
+                    });
+                  } else if (!manualTimeEntry) {
+                    setTimeOptionsOpen(true);
+                  }
+                }}
+                onChange={(event) => onTimeChange(event.target.value)}
+                onBlur={(event) => {
+                  const normalized = normalizeManualTime(event.target.value);
+                  if (normalized) onTimeChange(normalized);
+                  setManualTimeEntry(false);
+                }}
+              />
+            </div>
+          </PopoverAnchor>
+          {timeOptionsOpen ? (
             <PopoverContent className="w-52 p-1" align="end">
               <div className="max-h-72 space-y-0.5 overflow-y-auto">
                 {BOOKING_TIME_OPTIONS.map((option) => {
@@ -1585,6 +1619,7 @@ function DateTimeFields({
                       onClick={() => {
                         onTimeChange(option.value);
                         setTimeOptionsOpen(false);
+                        setManualTimeEntry(false);
                       }}
                     >
                       <span>{option.label}</span>
@@ -1594,11 +1629,26 @@ function DateTimeFields({
                 })}
               </div>
             </PopoverContent>
-          </Popover>
-        </div>
+          ) : null}
+        </Popover>
       </div>
     </div>
   );
+}
+
+function normalizeManualTime(value: string) {
+  const match = value
+    .trim()
+    .toUpperCase()
+    .match(/^(\d{1,2})(?::?(\d{2}))?\s*(AM|PM)?$/);
+  if (!match) return null;
+  let hours = Number(match[1]);
+  const minutes = Number(match[2] ?? "0");
+  const period = match[3];
+  if (minutes > 59 || hours > (period ? 12 : 23) || hours < 0) return null;
+  if (period === "AM" && hours === 12) hours = 0;
+  if (period === "PM" && hours < 12) hours += 12;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 export function MessageForm() {
