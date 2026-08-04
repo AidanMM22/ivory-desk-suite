@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarDays, Check, ChevronsUpDown, Clock } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronsUpDown, Clock } from "lucide-react";
 import { format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -1507,7 +1507,10 @@ function DateTimeFields({
   onTimeChange: (value: string) => void;
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [timeOptionsOpen, setTimeOptionsOpen] = useState(false);
   const selectedDate = date ? new Date(`${date}T12:00:00`) : undefined;
+  const optionIsPast = (optionTime: string) =>
+    new Date(`${date}T${optionTime}:00`).getTime() < Date.now();
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -1541,19 +1544,58 @@ function DateTimeFields({
       </div>
       <div className="space-y-1.5">
         <Label>Start time</Label>
-        <Select value={time} onValueChange={onTimeChange}>
-          <SelectTrigger className="bg-background">
-            <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-            <SelectValue placeholder="Choose a time" />
-          </SelectTrigger>
-          <SelectContent className="max-h-72">
-            {BOOKING_TIME_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex">
+          <div className="relative min-w-0 flex-1">
+            <Clock className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="time"
+              step="60"
+              className="rounded-r-none bg-background pl-9"
+              value={time}
+              onChange={(event) => onTimeChange(event.target.value)}
+            />
+          </div>
+          <Popover open={timeOptionsOpen} onOpenChange={setTimeOptionsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-l-none border-l-0 bg-background"
+                aria-label="Show available time options"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-52 p-1" align="end">
+              <div className="max-h-72 space-y-0.5 overflow-y-auto">
+                {BOOKING_TIME_OPTIONS.map((option) => {
+                  const isPast = optionIsPast(option.value);
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant="ghost"
+                      disabled={isPast}
+                      className={cn(
+                        "h-8 w-full justify-between px-2 font-normal",
+                        option.value === time && !isPast && "bg-accent",
+                        isPast && "text-muted-foreground/50",
+                      )}
+                      onClick={() => {
+                        onTimeChange(option.value);
+                        setTimeOptionsOpen(false);
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      {isPast ? <span className="text-[10px] uppercase">Past</span> : null}
+                    </Button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
     </div>
   );
