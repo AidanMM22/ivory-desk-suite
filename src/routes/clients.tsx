@@ -224,7 +224,7 @@ function ClientsPage() {
                   <TableHead>Tags</TableHead>
                   <TableHead>Consent</TableHead>
                   {can("clients.delete") ? (
-                    <TableHead className="w-[104px] pr-5 text-right">
+                    <TableHead className="w-[96px] pr-5 text-right">
                       <span className="sr-only">Remove</span>
                     </TableHead>
                   ) : null}
@@ -279,17 +279,17 @@ function ClientsPage() {
                       )}
                     </TableCell>
                     {can("clients.delete") ? (
-                      <TableCell className="w-[104px] pr-5 text-right">
+                      <TableCell className="w-[96px] pr-5 text-right">
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
-                          className="h-8 border-destructive/25 px-2.5 text-destructive shadow-none hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                          className="h-7 gap-1 px-2 text-xs shadow-none"
                           onClick={(event) => {
                             event.stopPropagation();
                             setRemoving(c);
                           }}
                         >
-                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" />
                           Remove
                         </Button>
                       </TableCell>

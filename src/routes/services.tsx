@@ -28,9 +28,18 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelectDropdown } from "@/components/shared/multi-select";
 import { EmptyState, PageHeader } from "@/components/shared/page";
+import { ServiceDurationPrices } from "@/components/shared/service-duration-prices";
 import { services, therapists, appointments } from "@/lib/data";
 import { useCrmData } from "@/lib/crm-data";
 import { currency } from "@/lib/format";
+import {
+  durationOptionsFromDrafts,
+  durationPriceDraftsAreValid,
+  durationPriceDraftsForService,
+  emptyDurationPriceDraft,
+  serviceDurationOptions,
+  type DurationPriceDraft,
+} from "@/lib/service-pricing";
 import {
   allRooms,
   futureAppointmentsForService,
@@ -47,30 +56,18 @@ export const Route = createFileRoute("/services")({
 interface ServiceDraft {
   name: string;
   description: string;
-  durations: string;
+  durationPrices: DurationPriceDraft[];
   cleanupMinutes: string;
-  price: string;
   roomIds: string[];
   therapistIds: string[];
   active: boolean;
 }
 
-const parseDurations = (value: string) =>
-  Array.from(
-    new Set(
-      value
-        .split(",")
-        .map((duration) => Number(duration.trim()))
-        .filter((duration) => Number.isInteger(duration) && duration > 0),
-    ),
-  ).sort((a, b) => a - b);
-
 const emptyDraft = (): ServiceDraft => ({
   name: "",
   description: "",
-  durations: "60",
+  durationPrices: [emptyDurationPriceDraft()],
   cleanupMinutes: "0",
-  price: "",
   roomIds: [],
   therapistIds: [],
   active: true,
@@ -79,9 +76,8 @@ const emptyDraft = (): ServiceDraft => ({
 const draftFromService = (service: Service): ServiceDraft => ({
   name: service.name,
   description: service.description,
-  durations: service.durations.join(", "),
+  durationPrices: durationPriceDraftsForService(service),
   cleanupMinutes: String(service.cleanupMinutes ?? 0),
-  price: String(service.price),
   roomIds: roomIdsForService(service),
   therapistIds: therapistIdsForService(service),
   active: service.active,
@@ -120,8 +116,8 @@ function ServicesPage() {
   };
 
   const save = async () => {
-    const durations = parseDurations(draft.durations);
-    if (!draft.name.trim() || durations.length === 0 || draft.price === "") return;
+    if (!draft.name.trim() || !durationPriceDraftsAreValid(draft.durationPrices)) return;
+    const durationOptions = durationOptionsFromDrafts(draft.durationPrices);
     const removedRooms = editing
       ? roomIdsForService(editing).filter((id) => !draft.roomIds.includes(id))
       : [];
@@ -150,9 +146,10 @@ function ServicesPage() {
       key: editing?.key ?? id,
       name: draft.name.trim(),
       description: draft.description.trim(),
-      durations,
+      durations: durationOptions.map((option) => option.duration),
+      durationOptions,
       cleanupMinutes: Number(draft.cleanupMinutes) || 0,
-      price: Number(draft.price),
+      price: durationOptions[0]!.price,
       roomIds: draft.roomIds,
       therapistIds: draft.therapistIds,
       active: draft.active,
@@ -216,9 +213,13 @@ function ServicesPage() {
                   <p className="text-muted-foreground">{service.description}</p>
                 ) : null}
                 <div className="grid grid-cols-2 gap-2">
-                  <Summary label="Duration" value={`${service.durations.join(" / ")} min`} />
+                  <Summary
+                    label="Duration pricing"
+                    value={serviceDurationOptions(service)
+                      .map((option) => `${option.duration} min · ${currency(option.price)}`)
+                      .join(" / ")}
+                  />
                   <Summary label="Cleanup" value={`${service.cleanupMinutes ?? 0} min`} />
-                  <Summary label="Price" value={currency(service.price)} />
                   <Summary label="Rooms" value={String(roomIdsForService(service).length)} />
                   <Summary
                     label="Therapists"
@@ -250,31 +251,6 @@ function ServicesPage() {
                 onChange={(event) => setDraft({ ...draft, name: event.target.value })}
               />
             </Field>
-            <Field label="Price">
-              <div className="relative">
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
-                >
-                  $
-                </span>
-                <Input
-                  className="pl-7"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={draft.price}
-                  onChange={(event) => setDraft({ ...draft, price: event.target.value })}
-                />
-              </div>
-            </Field>
-            <Field label="Service durations">
-              <Input
-                placeholder="60, 90"
-                value={draft.durations}
-                onChange={(event) => setDraft({ ...draft, durations: event.target.value })}
-              />
-            </Field>
             <Field label="Cleanup / buffer minutes">
               <Input
                 type="number"
@@ -284,6 +260,10 @@ function ServicesPage() {
                 onChange={(event) => setDraft({ ...draft, cleanupMinutes: event.target.value })}
               />
             </Field>
+            <ServiceDurationPrices
+              value={draft.durationPrices}
+              onChange={(durationPrices) => setDraft({ ...draft, durationPrices })}
+            />
             <div className="sm:col-span-2">
               <Field label="Description (optional)">
                 <Textarea
@@ -346,10 +326,7 @@ function ServicesPage() {
               </Button>
               <Button
                 disabled={
-                  saving ||
-                  !draft.name.trim() ||
-                  parseDurations(draft.durations).length === 0 ||
-                  draft.price === ""
+                  saving || !draft.name.trim() || !durationPriceDraftsAreValid(draft.durationPrices)
                 }
                 onClick={() => void save()}
               >

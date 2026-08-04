@@ -77,6 +77,68 @@ export const hasSchedulingConflict = ({
   });
 };
 
+const resourceHasSchedulingConflict = ({
+  start,
+  duration,
+  cleanupMinutes,
+  matches,
+}: {
+  start: string;
+  duration: number;
+  cleanupMinutes: number;
+  matches: (appointment: Appointment) => boolean;
+}) => {
+  const candidateStart = new Date(start).getTime();
+  const candidateEnd = candidateStart + (duration + cleanupMinutes) * 60_000;
+  return appointments.some((appointment) => {
+    if (
+      appointment.status === "cancelled" ||
+      appointment.status === "no_show" ||
+      !matches(appointment)
+    ) {
+      return false;
+    }
+    const existingStart = new Date(appointment.start).getTime();
+    return candidateStart < appointmentEnd(appointment) && candidateEnd > existingStart;
+  });
+};
+
+export const therapistHasSchedulingConflict = ({
+  start,
+  duration,
+  cleanupMinutes,
+  therapistId,
+}: {
+  start: string;
+  duration: number;
+  cleanupMinutes: number;
+  therapistId: string;
+}) =>
+  resourceHasSchedulingConflict({
+    start,
+    duration,
+    cleanupMinutes,
+    matches: (appointment) => appointment.therapistId === therapistId,
+  });
+
+export const roomHasSchedulingConflict = ({
+  start,
+  duration,
+  cleanupMinutes,
+  roomId,
+}: {
+  start: string;
+  duration: number;
+  cleanupMinutes: number;
+  roomId: string;
+}) =>
+  resourceHasSchedulingConflict({
+    start,
+    duration,
+    cleanupMinutes,
+    matches: (appointment) => appointment.roomId === roomId,
+  });
+
 export const therapistAvailableAt = (
   therapist: Therapist,
   start: string,

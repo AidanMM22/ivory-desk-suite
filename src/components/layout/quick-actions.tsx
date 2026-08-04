@@ -1,7 +1,18 @@
 import { useState } from "react";
+import { CalendarDays, Check, ChevronsUpDown, Clock } from "lucide-react";
+import { format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +23,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { MultiSelectDropdown } from "@/components/shared/multi-select";
+import { ServiceDurationPrices } from "@/components/shared/service-duration-prices";
 import {
   Select,
   SelectContent,
@@ -26,6 +39,7 @@ import { useWorkspace } from "@/lib/workspace";
 import { clients, services, therapists, TODAY, locations } from "@/lib/data";
 import { useCrmData } from "@/lib/crm-data";
 import { availableClientTags } from "@/lib/client-tags";
+import { currency } from "@/lib/format";
 import {
   eligibleRooms,
   eligibleTherapists,
@@ -34,7 +48,18 @@ import {
   roomIdsForService,
   therapistIdsForService,
   therapistAvailableAt,
+  therapistHasSchedulingConflict,
+  roomHasSchedulingConflict,
 } from "@/lib/scheduling";
+import {
+  durationOptionsFromDrafts,
+  durationPriceDraftsAreValid,
+  emptyDurationPriceDraft,
+  serviceDurationOptions,
+  servicePriceForDuration,
+  type DurationPriceDraft,
+} from "@/lib/service-pricing";
+import { cn } from "@/lib/utils";
 import type {
   Appointment,
   Client,
@@ -81,9 +106,8 @@ interface RoomDraft {
 
 interface ServiceDraft {
   name: string;
-  durations: string;
+  durationPrices: DurationPriceDraft[];
   cleanupMinutes: string;
-  price: string;
   description: string;
   roomIds: string[];
   therapistIds: string[];
@@ -300,9 +324,8 @@ const emptyRoom: RoomDraft = {
 
 const emptyService: ServiceDraft = {
   name: "",
-  durations: "60",
+  durationPrices: [emptyDurationPriceDraft()],
   cleanupMinutes: "0",
-  price: "",
   description: "",
   roomIds: [],
   therapistIds: [],
@@ -316,16 +339,6 @@ const initials = (name: string) =>
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
-
-const parseDurations = (value: string) =>
-  Array.from(
-    new Set(
-      value
-        .split(",")
-        .map((duration) => Number(duration.trim()))
-        .filter((duration) => Number.isInteger(duration) && duration > 0),
-    ),
-  ).sort((a, b) => a - b);
 
 export function QuickActionDialogs() {
   const { quickAction, setQuickAction, addTask } = useWorkspace();
@@ -864,39 +877,10 @@ export function QuickActionDialogs() {
                 />
               </Field>
             </div>
-            <Field label="Durations">
-              <Input
-                id="service-durations"
-                inputMode="numeric"
-                placeholder="60, 90"
-                value={serviceDraft.durations}
-                onChange={(event) =>
-                  setServiceDraft({ ...serviceDraft, durations: event.target.value })
-                }
-              />
-            </Field>
-            <Field label="Starting price">
-              <div className="relative">
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
-                >
-                  $
-                </span>
-                <Input
-                  id="service-price"
-                  className="pl-7"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="95"
-                  value={serviceDraft.price}
-                  onChange={(event) =>
-                    setServiceDraft({ ...serviceDraft, price: event.target.value })
-                  }
-                />
-              </div>
-            </Field>
+            <ServiceDurationPrices
+              value={serviceDraft.durationPrices}
+              onChange={(durationPrices) => setServiceDraft({ ...serviceDraft, durationPrices })}
+            />
             <Field label="Cleanup / buffer">
               <Input
                 id="service-cleanup"
@@ -970,20 +954,20 @@ export function QuickActionDialogs() {
               disabled={
                 saving ||
                 !serviceDraft.name.trim() ||
-                parseDurations(serviceDraft.durations).length === 0 ||
-                serviceDraft.price === "" ||
-                Number(serviceDraft.price) < 0 ||
+                !durationPriceDraftsAreValid(serviceDraft.durationPrices) ||
                 Number(serviceDraft.cleanupMinutes) < 0
               }
               onClick={() => {
                 const id = crypto.randomUUID();
+                const durationOptions = durationOptionsFromDrafts(serviceDraft.durationPrices);
                 const service: Service = {
                   id,
                   key: id,
                   name: serviceDraft.name.trim(),
-                  durations: parseDurations(serviceDraft.durations),
+                  durations: durationOptions.map((option) => option.duration),
+                  durationOptions,
                   cleanupMinutes: Number(serviceDraft.cleanupMinutes),
-                  price: Number(serviceDraft.price),
+                  price: durationOptions[0]!.price,
                   description: serviceDraft.description.trim(),
                   roomIds: serviceDraft.roomIds,
                   therapistIds: serviceDraft.therapistIds,
@@ -1090,26 +1074,68 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment) => void }) {
   const { persistRecord } = useCrmData();
   const availableServices = services.filter((item) => item.active);
+  const activeClients = clients.filter((client) => !client.archivedAt);
   const [service, setService] = useState(availableServices[0]?.key ?? "");
   const selected = availableServices.find((item) => item.key === service);
-  const rooms = selected ? eligibleRooms(selected) : [];
+  const durationOptions = selected ? serviceDurationOptions(selected) : [];
+  const eligibleServiceRooms = selected ? eligibleRooms(selected) : [];
   const qualifiedTherapists = selected ? eligibleTherapists(selected) : [];
-  const [subjectId, setSubjectId] = useState(clients[0]?.id ?? "");
-  const [duration, setDuration] = useState(String(selected?.durations[0] ?? 60));
+  const [subjectId, setSubjectId] = useState("");
+  const [duration, setDuration] = useState(String(durationOptions[0]?.duration ?? 60));
   const [therapistId, setTherapistId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [date, setDate] = useState(TODAY);
   const [time, setTime] = useState("14:00");
-  const [price, setPrice] = useState(String(selected?.price ?? 0));
   const [source, setSource] = useState<LeadSource>("Website booking");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const effectiveTherapistId = qualifiedTherapists.some((item) => item.id === therapistId)
+  const serviceDuration = Number(duration);
+  const cleanupMinutes = selected?.cleanupMinutes ?? 0;
+  const candidateStart =
+    date && time && Number.isFinite(serviceDuration)
+      ? new Date(`${date}T${time}:00`).toISOString()
+      : "";
+  const selectedTimeIsPast =
+    candidateStart !== "" && new Date(candidateStart).getTime() < Date.now();
+  const slotAvailableRooms =
+    candidateStart && !selectedTimeIsPast
+      ? eligibleServiceRooms.filter(
+          (room) =>
+            !roomHasSchedulingConflict({
+              start: candidateStart,
+              duration: serviceDuration,
+              cleanupMinutes,
+              roomId: room.id,
+            }),
+        )
+      : [];
+  const availableTherapists =
+    candidateStart && !selectedTimeIsPast
+      ? qualifiedTherapists.filter(
+          (therapist) =>
+            slotAvailableRooms.some((room) => room.locationId === therapist.locationId) &&
+            therapistAvailableAt(therapist, candidateStart, serviceDuration, cleanupMinutes) &&
+            !therapistHasSchedulingConflict({
+              start: candidateStart,
+              duration: serviceDuration,
+              cleanupMinutes,
+              therapistId: therapist.id,
+            }),
+        )
+      : [];
+  const effectiveTherapistId = availableTherapists.some((item) => item.id === therapistId)
     ? therapistId
-    : (qualifiedTherapists[0]?.id ?? "");
-  const effectiveRoomId = rooms.some((item) => item.id === roomId) ? roomId : (rooms[0]?.id ?? "");
+    : "";
+  const selectedTherapist = availableTherapists.find(
+    (therapist) => therapist.id === effectiveTherapistId,
+  );
+  const availableRooms = selectedTherapist
+    ? slotAvailableRooms.filter((room) => room.locationId === selectedTherapist.locationId)
+    : slotAvailableRooms;
+  const effectiveRoomId = availableRooms.some((item) => item.id === roomId) ? roomId : "";
+  const selectedPrice = selected ? servicePriceForDuration(selected, serviceDuration) : 0;
 
-  if (!selected || clients.length === 0) {
+  if (!selected || activeClients.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
         Add a client and an active service before booking.
@@ -1119,24 +1145,26 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
 
   const selectService = (serviceKey: string) => {
     const next = availableServices.find((item) => item.key === serviceKey);
+    const nextOptions = next ? serviceDurationOptions(next) : [];
     setService(serviceKey);
-    setDuration(String(next?.durations[0] ?? 60));
-    setPrice(String(next?.price ?? 0));
+    setDuration(String(nextOptions[0]?.duration ?? 60));
     setTherapistId("");
     setRoomId("");
   };
 
   const book = () => {
-    const subject = clients.find((item) => item.id === subjectId);
-    const therapist = qualifiedTherapists.find((item) => item.id === effectiveTherapistId);
-    const room = rooms.find((item) => item.id === effectiveRoomId);
+    const subject = activeClients.find((item) => item.id === subjectId);
+    const therapist = availableTherapists.find((item) => item.id === effectiveTherapistId);
+    const room = availableRooms.find((item) => item.id === effectiveRoomId);
     if (!subject || !therapist || !room) {
-      toast.error("Choose a qualified therapist and compatible available room.");
+      toast.error("Choose a client, available therapist, and available room.");
       return;
     }
     const start = new Date(`${date}T${time}:00`).toISOString();
-    const serviceDuration = Number(duration);
-    const cleanupMinutes = selected.cleanupMinutes ?? 0;
+    if (new Date(start).getTime() < Date.now()) {
+      toast.error("Choose a future appointment time.");
+      return;
+    }
     if (!therapistAvailableAt(therapist, start, serviceDuration, cleanupMinutes)) {
       toast.error(`${therapist.name} is not available for the full appointment and buffer time.`);
       return;
@@ -1163,7 +1191,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
       roomId: room.id,
       start,
       status: "confirmed",
-      price: Number(price),
+      price: selectedPrice,
       deposit: "not_required",
       payment: "due",
       reminder: "scheduled",
@@ -1192,18 +1220,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Client">
-        <Select value={subjectId} onValueChange={setSubjectId}>
-          <SelectTrigger id="client-or-lead">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {clients.map((client) => (
-              <SelectItem key={client.id} value={client.id}>
-                {client.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ClientSearchCombobox clients={activeClients} value={subjectId} onChange={setSubjectId} />
       </Field>
       <Field label="Service">
         <Select value={service} onValueChange={selectService}>
@@ -1220,30 +1237,71 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
         </Select>
       </Field>
       <Field label="Service duration">
-        <Select value={duration} onValueChange={setDuration}>
+        <Select
+          value={duration}
+          onValueChange={(value) => {
+            setDuration(value);
+            setTherapistId("");
+            setRoomId("");
+          }}
+        >
           <SelectTrigger id="duration">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {selected.durations.map((minutes) => (
-              <SelectItem key={minutes} value={String(minutes)}>
-                {minutes} minutes
+            {durationOptions.map((option) => (
+              <SelectItem key={option.duration} value={String(option.duration)}>
+                {option.duration} minutes · {currency(option.price)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
+      <Field label="Price">
+        <div className="flex h-10 items-center justify-between rounded-md border border-border bg-muted/30 px-3">
+          <span className="font-medium">{currency(selectedPrice)}</span>
+          <span className="text-xs text-muted-foreground">Set by duration</span>
+        </div>
+      </Field>
+      <div className="rounded-xl border border-border bg-muted/20 p-4 sm:col-span-2">
+        <div className="mb-3 flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium">Appointment date and time</p>
+            <p className="text-xs text-muted-foreground">
+              Availability updates automatically as you make a selection.
+            </p>
+          </div>
+        </div>
+        <DateTimeFields
+          date={date}
+          time={time}
+          onDateChange={(value) => {
+            setDate(value);
+            setTherapistId("");
+            setRoomId("");
+          }}
+          onTimeChange={(value) => {
+            setTime(value);
+            setTherapistId("");
+            setRoomId("");
+          }}
+        />
+      </div>
       <Field label="Qualified therapist">
         <Select
           value={effectiveTherapistId}
-          onValueChange={setTherapistId}
-          disabled={qualifiedTherapists.length === 0}
+          onValueChange={(value) => {
+            setTherapistId(value);
+            setRoomId("");
+          }}
+          disabled={availableTherapists.length === 0}
         >
           <SelectTrigger id="therapist">
-            <SelectValue placeholder="No qualified therapist" />
+            <SelectValue placeholder="Choose an available therapist" />
           </SelectTrigger>
           <SelectContent>
-            {qualifiedTherapists.map((therapist) => (
+            {availableTherapists.map((therapist) => (
               <SelectItem key={therapist.id} value={therapist.id}>
                 {therapist.name}
               </SelectItem>
@@ -1252,45 +1310,22 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
         </Select>
       </Field>
       <Field label="Compatible room">
-        <Select value={effectiveRoomId} onValueChange={setRoomId} disabled={rooms.length === 0}>
+        <Select
+          value={effectiveRoomId}
+          onValueChange={setRoomId}
+          disabled={availableRooms.length === 0}
+        >
           <SelectTrigger id="room">
-            <SelectValue placeholder="No compatible room" />
+            <SelectValue placeholder="Choose an available room" />
           </SelectTrigger>
           <SelectContent>
-            {rooms.map((room) => (
+            {availableRooms.map((room) => (
               <SelectItem key={room.id} value={room.id}>
                 {room.name} · {room.locationName}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </Field>
-      <Field label="Date">
-        <Input
-          id="date"
-          type="date"
-          min={TODAY}
-          value={date}
-          onChange={(event) => setDate(event.target.value)}
-        />
-      </Field>
-      <Field label="Time">
-        <Input
-          id="time"
-          type="time"
-          value={time}
-          onChange={(event) => setTime(event.target.value)}
-        />
-      </Field>
-      <Field label="Price">
-        <Input
-          id="price"
-          type="number"
-          min="0"
-          step="0.01"
-          value={price}
-          onChange={(event) => setPrice(event.target.value)}
-        />
       </Field>
       <Field label="Source">
         <Select value={source} onValueChange={(value) => setSource(value as LeadSource)}>
@@ -1319,10 +1354,19 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
           />
         </Field>
       </div>
-      {qualifiedTherapists.length === 0 || rooms.length === 0 ? (
+      {qualifiedTherapists.length === 0 || eligibleServiceRooms.length === 0 ? (
         <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
           This service needs at least one active qualified therapist and one compatible available
           room before it can be booked.
+        </p>
+      ) : selectedTimeIsPast ? (
+        <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+          Choose a future appointment time to see available therapists and rooms.
+        </p>
+      ) : availableTherapists.length === 0 || availableRooms.length === 0 ? (
+        <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+          No qualified therapist or compatible room is free for the selected date, time, duration,
+          and cleanup buffer.
         </p>
       ) : null}
       <Button
@@ -1334,14 +1378,176 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
           !effectiveRoomId ||
           !date ||
           !time ||
+          selectedTimeIsPast ||
           Number(duration) <= 0 ||
-          price === "" ||
-          Number(price) < 0
+          selectedPrice < 0
         }
         onClick={book}
       >
         {saving ? "Booking…" : "Book appointment"}
       </Button>
+    </div>
+  );
+}
+
+function ClientSearchCombobox({
+  clients: availableClients,
+  value,
+  onChange,
+}: {
+  clients: Client[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const selectedClient = availableClients.find((client) => client.id === value);
+  const q = query.trim().toLowerCase();
+  const matchingClients = availableClients.filter(
+    (client) =>
+      !q ||
+      client.name.toLowerCase().includes(q) ||
+      client.phone.toLowerCase().includes(q) ||
+      client.email.toLowerCase().includes(q),
+  );
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setQuery("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="h-10 w-full justify-between px-3 font-normal"
+        >
+          <span className={cn("truncate", !selectedClient && "text-muted-foreground")}>
+            {selectedClient ? selectedClient.name : "Type a name, phone, or email"}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            autoFocus
+            placeholder="Search name, phone, or email…"
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            {matchingClients.length === 0 ? (
+              <CommandEmpty>No client matches that search.</CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {matchingClients.map((client) => (
+                  <CommandItem
+                    key={client.id}
+                    value={client.id}
+                    onSelect={() => {
+                      onChange(client.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn("h-4 w-4", client.id === value ? "opacity-100" : "opacity-0")}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{client.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {[client.phone, client.email].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const BOOKING_TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const hours = Math.floor(index / 2);
+  const minutes = index % 2 === 0 ? 0 : 30;
+  const value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return {
+    value,
+    label: new Date(2000, 0, 1, hours, minutes).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  };
+});
+
+function DateTimeFields({
+  date,
+  time,
+  onDateChange,
+  onTimeChange,
+}: {
+  date: string;
+  time: string;
+  onDateChange: (value: string) => void;
+  onTimeChange: (value: string) => void;
+}) {
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const selectedDate = date ? new Date(`${date}T12:00:00`) : undefined;
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-1.5">
+        <Label>Date</Label>
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full justify-start bg-background px-3 font-normal"
+            >
+              <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
+              {selectedDate ? format(selectedDate, "EEE, MMM d, yyyy") : "Choose a date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              disabled={{ before: startOfDay(new Date()) }}
+              onSelect={(nextDate) => {
+                if (!nextDate) return;
+                onDateChange(format(nextDate, "yyyy-MM-dd"));
+                setCalendarOpen(false);
+              }}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Start time</Label>
+        <Select value={time} onValueChange={onTimeChange}>
+          <SelectTrigger className="bg-background">
+            <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+            <SelectValue placeholder="Choose a time" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {BOOKING_TIME_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }

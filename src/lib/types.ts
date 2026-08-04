@@ -20,12 +20,18 @@ export interface Consent {
 
 export type ServiceKey = string;
 
+export interface ServiceDurationOption {
+  duration: number;
+  price: number;
+}
+
 export interface Service {
   id: ID;
   key: ServiceKey;
   name: string;
   durations: number[];
   price: number;
+  durationOptions?: ServiceDurationOption[] | undefined;
   description: string;
   cleanupMinutes?: number | undefined;
   roomIds?: ID[] | undefined;
