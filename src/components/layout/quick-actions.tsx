@@ -1523,6 +1523,7 @@ function DateTimeFields({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeOptionsOpen, setTimeOptionsOpen] = useState(false);
   const [manualTimeEntry, setManualTimeEntry] = useState(false);
+  const [manualTimeValue, setManualTimeValue] = useState(() => timeLabel(time));
   const timeInputRef = useRef<HTMLInputElement>(null);
   const selectedDate = date ? new Date(`${date}T12:00:00`) : undefined;
   const optionIsPast = (optionTime: string) =>
@@ -1573,16 +1574,17 @@ function DateTimeFields({
               <Input
                 ref={timeInputRef}
                 type="text"
-                inputMode="numeric"
-                placeholder="HH:MM"
-                className="bg-background pl-9"
-                value={time}
+                inputMode="text"
+                placeholder="2:30 PM"
+                className="cursor-pointer bg-background pl-9"
+                value={manualTimeEntry ? manualTimeValue : timeLabel(time)}
                 readOnly={!manualTimeEntry}
                 title="Click once to choose a time. Click again to type a time."
                 onClick={() => {
                   if (timeOptionsOpen) {
                     setTimeOptionsOpen(false);
                     setManualTimeEntry(true);
+                    setManualTimeValue(timeLabel(time));
                     requestAnimationFrame(() => {
                       timeInputRef.current?.focus();
                       timeInputRef.current?.select();
@@ -1591,10 +1593,11 @@ function DateTimeFields({
                     setTimeOptionsOpen(true);
                   }
                 }}
-                onChange={(event) => onTimeChange(event.target.value)}
+                onChange={(event) => setManualTimeValue(event.target.value)}
                 onBlur={(event) => {
                   const normalized = normalizeManualTime(event.target.value);
                   if (normalized) onTimeChange(normalized);
+                  setManualTimeValue(normalized ? timeLabel(normalized) : timeLabel(time));
                   setManualTimeEntry(false);
                 }}
               />
@@ -1602,7 +1605,12 @@ function DateTimeFields({
           </PopoverAnchor>
           {timeOptionsOpen ? (
             <PopoverContent className="w-52 p-1" align="end">
-              <div className="max-h-72 space-y-0.5 overflow-y-auto">
+              <div
+                className="max-h-72 touch-pan-y space-y-0.5 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                onWheel={(event) => {
+                  event.stopPropagation();
+                }}
+              >
                 {BOOKING_TIME_OPTIONS.map((option) => {
                   const isPast = optionIsPast(option.value);
                   return (
