@@ -22,10 +22,14 @@ export const roomIdsForService = (service: Service) =>
   service.roomIds ?? allRooms().map((room) => room.id);
 
 export const therapistIdsForService = (service: Service) =>
-  service.therapistIds ??
-  therapists
-    .filter((therapist) => therapist.specialties.includes(service.key))
-    .map((therapist) => therapist.id);
+  Array.from(
+    new Set([
+      ...(service.therapistIds ?? []),
+      ...therapists
+        .filter((therapist) => therapist.specialties.includes(service.key))
+        .map((therapist) => therapist.id),
+    ]),
+  );
 
 export const eligibleRooms = (service: Service) => {
   const roomIds = new Set(roomIdsForService(service));

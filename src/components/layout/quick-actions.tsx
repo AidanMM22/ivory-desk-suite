@@ -1109,20 +1109,24 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
             }),
         )
       : [];
-  const availableTherapists =
+  const locationCompatibleTherapists = qualifiedTherapists.filter((therapist) =>
+    eligibleServiceRooms.some((room) => room.locationId === therapist.locationId),
+  );
+  const scheduledTherapists =
     candidateStart && !selectedTimeIsPast
-      ? qualifiedTherapists.filter(
-          (therapist) =>
-            slotAvailableRooms.some((room) => room.locationId === therapist.locationId) &&
-            therapistAvailableAt(therapist, candidateStart, serviceDuration, cleanupMinutes) &&
-            !therapistHasSchedulingConflict({
-              start: candidateStart,
-              duration: serviceDuration,
-              cleanupMinutes,
-              therapistId: therapist.id,
-            }),
+      ? locationCompatibleTherapists.filter((therapist) =>
+          therapistAvailableAt(therapist, candidateStart, serviceDuration, cleanupMinutes),
         )
       : [];
+  const availableTherapists = scheduledTherapists.filter(
+    (therapist) =>
+      !therapistHasSchedulingConflict({
+        start: candidateStart,
+        duration: serviceDuration,
+        cleanupMinutes,
+        therapistId: therapist.id,
+      }),
+  );
   const effectiveTherapistId = availableTherapists.some((item) => item.id === therapistId)
     ? therapistId
     : "";
@@ -1134,6 +1138,27 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
     : slotAvailableRooms;
   const effectiveRoomId = availableRooms.some((item) => item.id === roomId) ? roomId : "";
   const selectedPrice = selected ? servicePriceForDuration(selected, serviceDuration) : 0;
+  const bookingBlocker = !subjectId
+    ? "Search for and select a client to continue."
+    : qualifiedTherapists.length === 0
+      ? "No active therapist is assigned to perform this service."
+      : eligibleServiceRooms.length === 0
+        ? "No available room is assigned to this service."
+        : locationCompatibleTherapists.length === 0
+          ? "The qualified therapists and compatible rooms for this service are assigned to different locations."
+          : selectedTimeIsPast
+            ? "Choose a future appointment time."
+            : scheduledTherapists.length === 0
+              ? "No qualified therapist is scheduled for the full appointment and cleanup time."
+              : availableTherapists.length === 0
+                ? "All qualified therapists are already booked during this time."
+                : !effectiveTherapistId
+                  ? "Choose an available therapist to continue."
+                  : availableRooms.length === 0
+                    ? "No compatible room is free at the selected therapist's location."
+                    : !effectiveRoomId
+                      ? "Choose an available room to continue."
+                      : null;
 
   if (!selected || activeClients.length === 0) {
     return (
@@ -1354,33 +1379,15 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
           />
         </Field>
       </div>
-      {qualifiedTherapists.length === 0 || eligibleServiceRooms.length === 0 ? (
+      {bookingBlocker ? (
         <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-          This service needs at least one active qualified therapist and one compatible available
-          room before it can be booked.
-        </p>
-      ) : selectedTimeIsPast ? (
-        <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-          Choose a future appointment time to see available therapists and rooms.
-        </p>
-      ) : availableTherapists.length === 0 || availableRooms.length === 0 ? (
-        <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-          No qualified therapist or compatible room is free for the selected date, time, duration,
-          and cleanup buffer.
+          {bookingBlocker}
         </p>
       ) : null}
       <Button
         className="sm:col-span-2"
         disabled={
-          saving ||
-          !subjectId ||
-          !effectiveTherapistId ||
-          !effectiveRoomId ||
-          !date ||
-          !time ||
-          selectedTimeIsPast ||
-          Number(duration) <= 0 ||
-          selectedPrice < 0
+          saving || !!bookingBlocker || !date || !time || Number(duration) <= 0 || selectedPrice < 0
         }
         onClick={book}
       >

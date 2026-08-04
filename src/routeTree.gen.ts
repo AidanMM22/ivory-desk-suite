@@ -15,6 +15,7 @@ import { Route as AutomationsRouteImport } from './routes/automations'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as LocationsRouteImport } from './routes/locations'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as RoomsRouteImport } from './routes/rooms'
@@ -50,6 +51,11 @@ const ClientsRoute = ClientsRouteImport.update({
 const InboxRoute = InboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocationsRoute = LocationsRouteImport.update({
+  id: '/locations',
+  path: '/locations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/campaigns': typeof CampaignsRoute
   '/clients': typeof ClientsRoute
   '/inbox': typeof InboxRoute
+  '/locations': typeof LocationsRoute
   '/reports': typeof ReportsRoute
   '/reviews': typeof ReviewsRoute
   '/rooms': typeof RoomsRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/campaigns': typeof CampaignsRoute
   '/clients': typeof ClientsRoute
   '/inbox': typeof InboxRoute
+  '/locations': typeof LocationsRoute
   '/reports': typeof ReportsRoute
   '/reviews': typeof ReviewsRoute
   '/rooms': typeof RoomsRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/campaigns': typeof CampaignsRoute
   '/clients': typeof ClientsRoute
   '/inbox': typeof InboxRoute
+  '/locations': typeof LocationsRoute
   '/reports': typeof ReportsRoute
   '/reviews': typeof ReviewsRoute
   '/rooms': typeof RoomsRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/clients'
     | '/inbox'
+    | '/locations'
     | '/reports'
     | '/reviews'
     | '/rooms'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/clients'
     | '/inbox'
+    | '/locations'
     | '/reports'
     | '/reviews'
     | '/rooms'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/clients'
     | '/inbox'
+    | '/locations'
     | '/reports'
     | '/reviews'
     | '/rooms'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   CampaignsRoute: typeof CampaignsRoute
   ClientsRoute: typeof ClientsRoute
   InboxRoute: typeof InboxRoute
+  LocationsRoute: typeof LocationsRoute
   ReportsRoute: typeof ReportsRoute
   ReviewsRoute: typeof ReviewsRoute
   RoomsRoute: typeof RoomsRoute
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locations': {
+      id: '/locations'
+      path: '/locations'
+      fullPath: '/locations'
+      preLoaderRoute: typeof LocationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -282,6 +302,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsRoute: CampaignsRoute,
   ClientsRoute: ClientsRoute,
   InboxRoute: InboxRoute,
+  LocationsRoute: LocationsRoute,
   ReportsRoute: ReportsRoute,
   ReviewsRoute: ReviewsRoute,
   RoomsRoute: RoomsRoute,
