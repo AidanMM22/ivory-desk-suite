@@ -283,13 +283,13 @@ function ClientsPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          className="h-7 gap-1 px-2 text-xs shadow-none"
+                          className="inline-flex h-7 items-center justify-center gap-1 px-2 text-xs leading-none shadow-none"
                           onClick={(event) => {
                             event.stopPropagation();
                             setRemoving(c);
                           }}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5 shrink-0" />
                           Remove
                         </Button>
                       </TableCell>
