@@ -143,24 +143,62 @@ export const roomHasSchedulingConflict = ({
     matches: (appointment) => appointment.roomId === roomId,
   });
 
+export interface TherapistShiftStatus {
+  startsDuringShift: boolean;
+  serviceEndsAfterShift: boolean;
+  cleanupEndsAfterShift: boolean;
+}
+
+export const therapistShiftStatus = (
+  therapist: Therapist,
+  start: string,
+  duration: number,
+  cleanupMinutes: number,
+): TherapistShiftStatus => {
+  if (!therapist.weeklyAvailability) {
+    return {
+      startsDuringShift: true,
+      serviceEndsAfterShift: false,
+      cleanupEndsAfterShift: false,
+    };
+  }
+  const date = new Date(start);
+  const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+  const day = therapist.weeklyAvailability.find((entry) => entry.day === dayName);
+  if (!day || day.unavailable) {
+    return {
+      startsDuringShift: false,
+      serviceEndsAfterShift: false,
+      cleanupEndsAfterShift: false,
+    };
+  }
+  const startMinutes = date.getHours() * 60 + date.getMinutes();
+  const [startHour = 0, startMinute = 0] = day.start.split(":").map(Number);
+  const [endHour = 0, endMinute = 0] = day.end.split(":").map(Number);
+  const shiftStart = startHour * 60 + startMinute;
+  const shiftEnd = endHour * 60 + endMinute;
+  const startsDuringShift = startMinutes >= shiftStart && startMinutes < shiftEnd;
+  const serviceEndsAfterShift = startsDuringShift && startMinutes + duration > shiftEnd;
+  const cleanupEndsAfterShift =
+    startsDuringShift &&
+    !serviceEndsAfterShift &&
+    startMinutes + duration + cleanupMinutes > shiftEnd;
+
+  return {
+    startsDuringShift,
+    serviceEndsAfterShift,
+    cleanupEndsAfterShift,
+  };
+};
+
 export const therapistAvailableAt = (
   therapist: Therapist,
   start: string,
   duration: number,
   cleanupMinutes: number,
 ) => {
-  if (!therapist.weeklyAvailability) return true;
-  const date = new Date(start);
-  const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-  const day = therapist.weeklyAvailability.find((entry) => entry.day === dayName);
-  if (!day || day.unavailable) return false;
-  const startMinutes = date.getHours() * 60 + date.getMinutes();
-  const [startHour = 0, startMinute = 0] = day.start.split(":").map(Number);
-  const [endHour = 0, endMinute = 0] = day.end.split(":").map(Number);
-  return (
-    startMinutes >= startHour * 60 + startMinute &&
-    startMinutes + duration + cleanupMinutes <= endHour * 60 + endMinute
-  );
+  const status = therapistShiftStatus(therapist, start, duration, cleanupMinutes);
+  return status.startsDuringShift && !status.serviceEndsAfterShift && !status.cleanupEndsAfterShift;
 };
 
 export const futureAppointmentsForService = (serviceKey: string) =>

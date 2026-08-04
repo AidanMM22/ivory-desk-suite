@@ -47,7 +47,7 @@ import {
   allRooms,
   roomIdsForService,
   therapistIdsForService,
-  therapistAvailableAt,
+  therapistShiftStatus,
   therapistHasSchedulingConflict,
   roomHasSchedulingConflict,
 } from "@/lib/scheduling";
@@ -1126,8 +1126,10 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   );
   const scheduledTherapists =
     candidateStart && !selectedTimeIsPast
-      ? locationCompatibleTherapists.filter((therapist) =>
-          therapistAvailableAt(therapist, candidateStart, serviceDuration, cleanupMinutes),
+      ? locationCompatibleTherapists.filter(
+          (therapist) =>
+            therapistShiftStatus(therapist, candidateStart, serviceDuration, cleanupMinutes)
+              .startsDuringShift,
         )
       : [];
   const availableTherapists = scheduledTherapists.filter(
@@ -1145,6 +1147,16 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   const selectedTherapist = availableTherapists.find(
     (therapist) => therapist.id === effectiveTherapistId,
   );
+  const selectedTherapistShift =
+    selectedTherapist && candidateStart
+      ? therapistShiftStatus(selectedTherapist, candidateStart, serviceDuration, cleanupMinutes)
+      : null;
+  const shiftWarning =
+    selectedTherapist && selectedTherapistShift?.serviceEndsAfterShift
+      ? `WARNING: ${selectedTherapist.name}'s shift ends before this appointment finishes!`
+      : selectedTherapist && selectedTherapistShift?.cleanupEndsAfterShift
+        ? `WARNING: Cleanup time extends past ${selectedTherapist.name}'s shift!`
+        : null;
   const availableRooms = selectedTherapist
     ? slotAvailableRooms.filter((room) => room.locationId === selectedTherapist.locationId)
     : slotAvailableRooms;
@@ -1163,7 +1175,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
             : selectedTimeIsPast
               ? "Choose a future appointment time."
               : scheduledTherapists.length === 0
-                ? "No qualified therapist is scheduled for the full appointment and cleanup time."
+                ? "No qualified therapist is scheduled to be working at the selected start time."
                 : availableTherapists.length === 0
                   ? "All qualified therapists are already booked during this time."
                   : !effectiveTherapistId
@@ -1204,8 +1216,10 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
       toast.error("Choose a future appointment time.");
       return;
     }
-    if (!therapistAvailableAt(therapist, start, serviceDuration, cleanupMinutes)) {
-      toast.error(`${therapist.name} is not available for the full appointment and buffer time.`);
+    if (
+      !therapistShiftStatus(therapist, start, serviceDuration, cleanupMinutes).startsDuringShift
+    ) {
+      toast.error(`${therapist.name} is not working at the selected start time.`);
       return;
     }
     if (
@@ -1396,6 +1410,11 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
       {bookingBlocker ? (
         <p className="sm:col-span-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
           {bookingBlocker}
+        </p>
+      ) : null}
+      {shiftWarning ? (
+        <p className="sm:col-span-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-semibold text-destructive">
+          {shiftWarning}
         </p>
       ) : null}
       <Button
