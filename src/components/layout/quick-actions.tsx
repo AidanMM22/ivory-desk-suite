@@ -1144,9 +1144,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
   const effectiveTherapistId = availableTherapists.some((item) => item.id === therapistId)
     ? therapistId
     : "";
-  const selectedTherapist = availableTherapists.find(
-    (therapist) => therapist.id === effectiveTherapistId,
-  );
+  const selectedTherapist = scheduledTherapists.find((therapist) => therapist.id === therapistId);
   const selectedTherapistShift =
     selectedTherapist && candidateStart
       ? therapistShiftStatus(selectedTherapist, candidateStart, serviceDuration, cleanupMinutes)
@@ -1413,7 +1411,10 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
         </p>
       ) : null}
       {shiftWarning ? (
-        <p className="sm:col-span-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-semibold text-destructive">
+        <p
+          className="sm:col-span-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
+          role="alert"
+        >
           {shiftWarning}
         </p>
       ) : null}

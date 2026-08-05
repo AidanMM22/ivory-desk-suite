@@ -6,6 +6,7 @@ export interface ShiftDay {
 }
 
 export interface ShiftTherapist {
+  availability?: string | undefined;
   weeklyAvailability?: ShiftDay[] | undefined;
 }
 
@@ -48,6 +49,12 @@ const parseTime = (value: string) => {
 const finiteMinutes = (value: number) =>
   Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 
+const legacyShiftEnd = (availability: string | undefined) => {
+  if (!availability) return null;
+  const match = availability.match(/(\d{1,2}:\d{2}\s*(?:am|pm))\s*$/i);
+  return match?.[1] ? parseTime(match[1]) : null;
+};
+
 export const therapistShiftStatus = (
   therapist: ShiftTherapist,
   start: string,
@@ -75,7 +82,14 @@ export const therapistShiftStatus = (
   const dayName = WEEKDAYS[date.getDay()]!;
   const day = schedule.find((entry) => entry.day.trim().toLowerCase() === dayName.toLowerCase());
   const shiftStart = day ? parseTime(day.start) : null;
-  const shiftEnd = day ? parseTime(day.end) : null;
+  const detailedShiftEnd = day ? parseTime(day.end) : null;
+  const summarizedShiftEnd = legacyShiftEnd(therapist.availability);
+  const shiftEnd =
+    detailedShiftEnd === null
+      ? summarizedShiftEnd
+      : summarizedShiftEnd === null
+        ? detailedShiftEnd
+        : Math.min(detailedShiftEnd, summarizedShiftEnd);
 
   if (
     !day ||

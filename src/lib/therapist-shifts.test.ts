@@ -67,3 +67,22 @@ test("uses the editor's 9-to-5 default for legacy therapists without a saved sch
     cleanupEndsAfterShift: false,
   });
 });
+
+test("uses the earlier shift end when persisted schedule fields disagree", () => {
+  assert.deepEqual(
+    therapistShiftStatus(
+      {
+        availability: "7 days · 9:00 AM–5:00 PM",
+        weeklyAvailability: [{ day: "Monday", unavailable: false, start: "09:00", end: "20:00" }],
+      },
+      mondayAt("16:30"),
+      45,
+      0,
+    ),
+    {
+      startsDuringShift: true,
+      serviceEndsAfterShift: true,
+      cleanupEndsAfterShift: false,
+    },
+  );
+});
