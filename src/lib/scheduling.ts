@@ -1,5 +1,8 @@
 import { appointments, locations, services, therapists } from "./data";
+import { therapistShiftStatus, type TherapistShiftStatus } from "./therapist-shifts";
 import type { Appointment, Room, Service, Therapist } from "./types";
+
+export { therapistShiftStatus, type TherapistShiftStatus };
 
 export interface LocatedRoom extends Room {
   locationId: string;
@@ -142,54 +145,6 @@ export const roomHasSchedulingConflict = ({
     cleanupMinutes,
     matches: (appointment) => appointment.roomId === roomId,
   });
-
-export interface TherapistShiftStatus {
-  startsDuringShift: boolean;
-  serviceEndsAfterShift: boolean;
-  cleanupEndsAfterShift: boolean;
-}
-
-export const therapistShiftStatus = (
-  therapist: Therapist,
-  start: string,
-  duration: number,
-  cleanupMinutes: number,
-): TherapistShiftStatus => {
-  if (!therapist.weeklyAvailability) {
-    return {
-      startsDuringShift: true,
-      serviceEndsAfterShift: false,
-      cleanupEndsAfterShift: false,
-    };
-  }
-  const date = new Date(start);
-  const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-  const day = therapist.weeklyAvailability.find((entry) => entry.day === dayName);
-  if (!day || day.unavailable) {
-    return {
-      startsDuringShift: false,
-      serviceEndsAfterShift: false,
-      cleanupEndsAfterShift: false,
-    };
-  }
-  const startMinutes = date.getHours() * 60 + date.getMinutes();
-  const [startHour = 0, startMinute = 0] = day.start.split(":").map(Number);
-  const [endHour = 0, endMinute = 0] = day.end.split(":").map(Number);
-  const shiftStart = startHour * 60 + startMinute;
-  const shiftEnd = endHour * 60 + endMinute;
-  const startsDuringShift = startMinutes >= shiftStart && startMinutes < shiftEnd;
-  const serviceEndsAfterShift = startsDuringShift && startMinutes + duration > shiftEnd;
-  const cleanupEndsAfterShift =
-    startsDuringShift &&
-    !serviceEndsAfterShift &&
-    startMinutes + duration + cleanupMinutes > shiftEnd;
-
-  return {
-    startsDuringShift,
-    serviceEndsAfterShift,
-    cleanupEndsAfterShift,
-  };
-};
 
 export const therapistAvailableAt = (
   therapist: Therapist,
