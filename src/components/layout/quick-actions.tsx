@@ -1304,7 +1304,7 @@ export function BookingForm({ onBooked }: { onBooked?: (appointment: Appointment
           <SelectContent>
             {durationOptions.map((option) => (
               <SelectItem key={option.duration} value={String(option.duration)}>
-                {option.duration} minutes · {currency(option.price)}
+                {option.duration} minutes
               </SelectItem>
             ))}
           </SelectContent>

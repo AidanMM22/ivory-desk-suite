@@ -54,14 +54,14 @@ export const therapistShiftStatus = (
   duration: number,
   cleanupMinutes: number,
 ): TherapistShiftStatus => {
-  const schedule = therapist.weeklyAvailability;
-  if (!schedule) {
-    return {
-      startsDuringShift: true,
-      serviceEndsAfterShift: false,
-      cleanupEndsAfterShift: false,
-    };
-  }
+  const schedule =
+    therapist.weeklyAvailability ??
+    WEEKDAYS.map((day) => ({
+      day,
+      unavailable: false,
+      start: "09:00",
+      end: "17:00",
+    }));
 
   const date = new Date(start);
   if (Number.isNaN(date.getTime())) {

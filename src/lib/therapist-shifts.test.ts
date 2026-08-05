@@ -59,3 +59,11 @@ test("normalizes persisted numeric strings and twelve-hour shift values", () => 
     },
   );
 });
+
+test("uses the editor's 9-to-5 default for legacy therapists without a saved schedule", () => {
+  assert.deepEqual(therapistShiftStatus({}, mondayAt("16:30"), 45, 0), {
+    startsDuringShift: true,
+    serviceEndsAfterShift: true,
+    cleanupEndsAfterShift: false,
+  });
+});
